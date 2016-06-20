@@ -7,17 +7,12 @@ import numpy as np
 import socket
 
 ####################################################################
-TCP_IP = '169.254.74.215' # The RPI's IP address!
+
+TCP_IP = '172.24.1.62' # The PC's IP address! (maybe not?) 
 TCP_PORT = 5005
-BUFFER_SIZE = 1024
-MESSAGE = "Hello world!"
-
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)	# TCP-socket
-server_socket.bind((TCP_IP, TCP_PORT))
-server_socket.listen(5)	# 5 = no of unaccepted connections that the system will allow before refusing new connections
-
-connection, address = server_socket.accept()
-print("Connection address: " + str(address))
+BUFFER_SIZE = 1024	# Maximum no of bytes(?) to be received at the same time
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)	# TCP-socket
+client_socket.connect((TCP_IP, TCP_PORT))
 
 ##########################################################################
 # initialize the camera and grab a reference to the raw camera capture
@@ -28,6 +23,8 @@ rawCapture = PiRGBArray(camera, size=(640, 480))
  
 # allow the camera to warmup
 time.sleep(0.1)
+
+counter = 0
  
 # capture frames from the camera
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
@@ -44,9 +41,9 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	result = cv2.bitwise_and(image, image, mask = range_mask)
 
 	# show the frame
-	cv2.imshow("image", image)
-	cv2.imshow("range_mask", range_mask)
-	cv2.imshow("result", result)
+	#cv2.imshow("image", image)
+	#cv2.imshow("range_mask", range_mask)
+	#cv2.imshow("result", result)
 
 	key = cv2.waitKey(1) & 0xFF
  
@@ -55,6 +52,12 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
  
 	# if the `q` key was pressed, break from the loop
 	if key == ord("q"):
-		break
+		break	
 		
-connection.close()		
+	#number_of_digits = len(str(counter)) # Antar att number_of_digits < 10 (sa att repr. av en byte)	
+	#print(str(number_of_digits) + str(counter))
+	#client_socket.sendall(str(number_of_digits) + str(counter)) # str() gor om varje siffra till 1 byte!
+	uint8_counter = np.uint8(counter)
+	print(str(uint8_counter))
+	client_socket.send(uint8_counter)
+	counter += 1		

@@ -1,11 +1,21 @@
 import sys, socket
-from PyQt4 import QtCore, QtGui
+from PyQt4 import QtCore, QtGui, QtNetwork
+import numpy as np
+
+TCP_IP = '172.24.1.62' # The PC's IP address! (maybe not?)
+TCP_PORT = 5005
+BUFFER_SIZE = 1024
 
 class Window(QtGui.QMainWindow):	# Klassen "Window" ärver från Qt.Gui.QMainWindow
 	
 	def __init__(self):	# Metod som alltid kommer köras direkt när en instans av "Window" skapas (här läggs det som alltid ska köras direkt vid uppstart)
 		
 		super(Window, self).__init__()	# super: ger föräldern. Dvs, kör init-metoden för klassen (QMainWindow) vi ärver ifrån
+		
+		self.TCP_Server = QtNetwork.QTcpServer(self)
+		self.TCP_Server.listen(QtNetwork.QHostAddress(TCP_IP), TCP_PORT)
+		self.TCP_Server.newConnection.connect(self.new_connection)
+		#self.connect(TCP_Server, SIGNAL("newConnection()"), self.new_connection)
 		
 		self.setGeometry(50, 50, 500, 300)	# self: det egna objektet, instansen av klassen som skapats
 		self.setWindowTitle("Test-namn")
@@ -102,6 +112,23 @@ class Window(QtGui.QMainWindow):	# Klassen "Window" ärver från Qt.Gui.QMainWin
 		cal.resize(200, 200)
 		
 		self.show()
+		
+	def new_connection(self):
+		print("New connection!")
+		self.connection = self.TCP_Server.nextPendingConnection()
+		self.connection.readyRead.connect(self.receive_message)
+		#self.connect(connection, SIGNAL("readyRead()"), self.receive_message)
+		
+	def receive_message(self):
+		print("Message ready!")
+		if self.connection.bytesAvailable() > 0:
+			stream = QtCore.QDataStream(self.connection)
+			stream.setVersion(QtCore.QDataStream.Qt_4_4)
+			received_data = 0
+			#no_of_received_bytes = int(stream.readRawData(1).decode('utf-8'))
+			received_data = stream.readRawData(1)
+			print(received_data)
+			self.styleChoice.setText(str(received_data))
 		
 	def save_file(self):
 		
