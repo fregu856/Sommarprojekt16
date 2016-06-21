@@ -2,9 +2,8 @@ import sys, socket
 from PyQt4 import QtCore, QtGui, QtNetwork
 import numpy as np
 
-TCP_IP = '172.24.1.62' # The PC's IP address! (maybe not?)
-TCP_PORT = 5005
-BUFFER_SIZE = 1024
+UDP_IP = '172.24.1.62' # The PC's IP address! (maybe not?)
+UDP_PORT = 5005
 
 class Window(QtGui.QMainWindow):	# Klassen "Window" ärver från Qt.Gui.QMainWindow
 	
@@ -12,10 +11,9 @@ class Window(QtGui.QMainWindow):	# Klassen "Window" ärver från Qt.Gui.QMainWin
 		
 		super(Window, self).__init__()	# super: ger föräldern. Dvs, kör init-metoden för klassen (QMainWindow) vi ärver ifrån
 		
-		self.TCP_Server = QtNetwork.QTcpServer(self)
-		self.TCP_Server.listen(QtNetwork.QHostAddress(TCP_IP), TCP_PORT)
-		self.TCP_Server.newConnection.connect(self.new_connection)
-		#self.connect(TCP_Server, SIGNAL("newConnection()"), self.new_connection)
+		self.UDP_socket = QtNetwork.QUdpSocket(self)	# Skapa UDP-socket
+		self.UDP_socket.bind(QtNetwork.QHostAddress(UDP_IP), UDP_PORT)	# Bind den till PC:s IP-adress och en port
+		self.UDP_socket.readyRead.connect(self.receive_data)	# Ange vad som ska hända när det finns data att läsa tillgänglig (jo, anropa "receive_data")
 		
 		self.setGeometry(50, 50, 500, 300)	# self: det egna objektet, instansen av klassen som skapats
 		self.setWindowTitle("Test-namn")
@@ -112,24 +110,15 @@ class Window(QtGui.QMainWindow):	# Klassen "Window" ärver från Qt.Gui.QMainWin
 		cal.resize(200, 200)
 		
 		self.show()
-		
-	def new_connection(self):
-		print("New connection!")
-		self.connection = self.TCP_Server.nextPendingConnection()
-		self.connection.readyRead.connect(self.receive_message)
-		#self.connect(connection, SIGNAL("readyRead()"), self.receive_message)
-		
-	def receive_message(self):
+
+	def receive_data(self):
 		print("Message ready!")
-		if self.connection.bytesAvailable() > 0:
-			stream = QtCore.QDataStream(self.connection)
-			stream.setVersion(QtCore.QDataStream.Qt_4_4)
-			received_data = 0
-			#no_of_received_bytes = int(stream.readRawData(1).decode('utf-8'))
-			received_data = stream.readRawData(1)
-			print(received_data)
-			self.styleChoice.setText(str(received_data))
-		
+		while self.UDP_socket.hasPendingDatagrams():	# Så länge det finns data att läsa in:
+			received_data = self.UDP_socket.readDatagram(1)	# Läs in en byte data, erhåller även information om sändaren (och typ något mer, lite oklart)
+			interesting_data = ord(received_data[0])	# Den intressanta datan (den skickade uint8:an) ligger först (i hex), läs in och konvertera tillbaks til uint8
+			print(interesting_data)
+			self.styleChoice.setText(str(interesting_data))	# Visa på GUI:t
+	
 	def save_file(self):
 		
 		name = QtGui.QFileDialog.getSaveFileName(self, 'Save File')

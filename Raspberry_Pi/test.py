@@ -8,11 +8,9 @@ import socket
 
 ####################################################################
 
-TCP_IP = '172.24.1.62' # The PC's IP address! (maybe not?) 
-TCP_PORT = 5005
-BUFFER_SIZE = 1024	# Maximum no of bytes(?) to be received at the same time
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)	# TCP-socket
-client_socket.connect((TCP_IP, TCP_PORT))
+UDP_IP = '172.24.1.62' # The PC's IP address! (maybe not?) 
+UDP_PORT = 5005
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)	# Skapa UDP-socket
 
 ##########################################################################
 # initialize the camera and grab a reference to the raw camera capture
@@ -57,7 +55,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	#number_of_digits = len(str(counter)) # Antar att number_of_digits < 10 (sa att repr. av en byte)	
 	#print(str(number_of_digits) + str(counter))
 	#client_socket.sendall(str(number_of_digits) + str(counter)) # str() gor om varje siffra till 1 byte!
-	uint8_counter = np.uint8(counter)
+	uint8_counter = np.uint8(counter)	# Gor om till uint8 (en byte) for sandning
 	print(str(uint8_counter))
-	client_socket.send(uint8_counter)
+	client_socket.sendto(uint8_counter, (UDP_IP, UDP_PORT))	# Skicka byte:n till PC:n
 	counter += 1		
