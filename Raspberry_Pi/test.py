@@ -14,10 +14,12 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)	# Skapa UDP-soc
 
 ##########################################################################
 # initialize the camera and grab a reference to the raw camera capture
+camera_x = 50
+camera_y = 50
 camera = PiCamera()
-camera.resolution = (640, 480)
+camera.resolution = (camera_x, camera_y)
 camera.framerate = 32
-rawCapture = PiRGBArray(camera, size=(640, 480))
+rawCapture = PiRGBArray(camera, size=(camera_x, camera_y))
  
 # allow the camera to warmup
 time.sleep(0.1)
@@ -29,19 +31,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	# grab the raw NumPy array representing the image, then initialize the timestamp
 	# and occupied/unoccupied text
 	image = frame.array
-
-	hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-	lower_red = np.array([30, 150, 50])
-	upper_red = np.array([255, 255, 180])
-
-	range_mask = cv2.inRange(hsv, lower_red, upper_red)
-	result = cv2.bitwise_and(image, image, mask = range_mask)
-
-	# show the frame
-	#cv2.imshow("image", image)
-	#cv2.imshow("range_mask", range_mask)
-	#cv2.imshow("result", result)
+	image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+	#print(image[0][1])
 
 	key = cv2.waitKey(1) & 0xFF
  
@@ -55,7 +46,20 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	#number_of_digits = len(str(counter)) # Antar att number_of_digits < 10 (sa att repr. av en byte)	
 	#print(str(number_of_digits) + str(counter))
 	#client_socket.sendall(str(number_of_digits) + str(counter)) # str() gor om varje siffra till 1 byte!
-	uint8_counter = np.uint8(counter)	# Gor om till uint8 (en byte) for sandning
-	print(str(uint8_counter))
-	client_socket.sendto(uint8_counter, (UDP_IP, UDP_PORT))	# Skicka byte:n till PC:n
-	counter += 1		
+	#uint8_counter = np.uint8(counter)	# Gor om till uint8 (en byte) for sandning
+	#print(str(uint8_counter))
+	#client_socket.sendto(uint8_counter, (UDP_IP, UDP_PORT))	# Skicka byte:n till PC:n
+	#counter += 1
+	for row_index in range(camera_y):
+		for col_index in range(camera_x):
+			uint8_value = np.uint8(image[row_index][col_index][0])
+			client_socket.sendto(uint8_value, (UDP_IP, UDP_PORT))
+			print(uint8_value)
+			
+			uint8_value = np.uint8(image[row_index][col_index][1])
+			client_socket.sendto(uint8_value, (UDP_IP, UDP_PORT))
+			print(uint8_value)
+			
+			uint8_value = np.uint8(image[row_index][col_index][2])
+			client_socket.sendto(uint8_value, (UDP_IP, UDP_PORT))
+			print(uint8_value)
