@@ -1,11 +1,12 @@
 import sys, socket
 from PyQt4 import QtCore, QtGui, QtNetwork
 import numpy as np
+import struct
 
 UDP_IP = '172.24.1.62' # The PC's IP address! (maybe not?)
 UDP_PORT = 5005
-camera_x = 50
-camera_y = 50
+camera_x = 200
+camera_y = 200
 
 class Window(QtGui.QMainWindow):    # Klassen "Window" ärver från Qt.Gui.QMainWindow
     
@@ -17,15 +18,13 @@ class Window(QtGui.QMainWindow):    # Klassen "Window" ärver från Qt.Gui.QMain
         self.UDP_socket.bind(QtNetwork.QHostAddress(UDP_IP), UDP_PORT)  # Bind den till PC:s IP-adress och en port
         self.UDP_socket.readyRead.connect(self.receive_data)    # Ange vad som ska hända när det finns data att läsa tillgänglig (jo, anropa "receive_data")
         
-        self.setGeometry(50, 50, 500, 300)  # self: det egna objektet, instansen av klassen som skapats
+        self.setGeometry(50, 50, 1000, 1000)  # self: det egna objektet, instansen av klassen som skapats
         self.setWindowTitle("Test-namn")
         self.setWindowIcon(QtGui.QIcon('logo.png'))
         
-        self.video_frame = QtGui.QLabel()
-        lay = QtGui.QVBoxLayout()
-        lay.setMargin(0)
-        lay.addWidget(self.video_frame)
-        self.setLayout(lay)
+        self.video_frame = QtGui.QLabel("test", self)
+        self.video_frame.move(400, 400)
+        self.video_frame.resize(200, 200)    
         
         statusBar = self.statusBar()    # Skapa/visa status-bar:en (bar:en längst ner på fönstret)
         
@@ -120,41 +119,33 @@ class Window(QtGui.QMainWindow):    # Klassen "Window" ärver från Qt.Gui.QMain
         self.show()
 
     def receive_data(self):
-        #print("Message ready!")
-        #while self.UDP_socket.hasPendingDatagrams():   # Så länge det finns data att läsa in:
-        #   received_data = self.UDP_socket.readDatagram(1) # Läs in en byte data, erhåller även information om sändaren (och typ något mer, lite oklart)
-        #   interesting_data = ord(received_data[0])    # Den intressanta datan (den skickade uint8:an) ligger först (i hex), läs in och konvertera tillbaks til uint8
-        #   print(interesting_data)
-        #   self.styleChoice.setText(str(interesting_data)) # Visa på GUI:t
         print("Message ready!")
-        image = []
-        for row_index in range(camera_y):
-            row_vector = []
-            for col_index in range(camera_x):
-                rgb_vector = []
-                for byte_index in range(3):
-                    received_data = self.UDP_socket.readDatagram(1) # Läs in en byte data, erhåller även information om sändaren (och typ något mer, lite oklart)
-                    interesting_data = ord(received_data[0])
-                    print(interesting_data)
-                    rgb_vector.append(interesting_data)
-                row_vector.append(rgb_vector)
-            image.append(row_vector)            
-        print(image)
-        print(image)
-        print(image)
-        print(image)
-        print(image)
-        print(image)
-        print(image)
-        print(image)
-        print(image)
-        print(image)
-        print(image)
-        print(image)
-        print(image)
-        img = QtGui.QImage(image, image.shape[1], image.shape[0], QtGui.QImage.Format_RGB888)
+        image = QtCore.QByteArray()
+        counter = 0
+        #received_data = self.UDP_socket.readDatagram(4) # Läs in 4 bytes data, erhåller även information om sändaren (och typ något mer, lite oklart)
+        #interesting_data_byte = received_data[0]
+        #interesting_data_int = int.from_bytes(interesting_data_byte, byteorder = "big")
+        #trans_size = interesting_data_int
+        #print(trans_size)
+        while counter < 3*camera_x*camera_y:
+            #print("New loop")
+            received_data = self.UDP_socket.readDatagram(1) # Läs in en byte data, erhåller även information om sändaren (och typ något mer, lite oklart)
+            interesting_data_byte = received_data[0]
+            if not interesting_data_byte:
+                #print("Pass")
+                pass
+            else:   
+                interesting_data_int = int.from_bytes(interesting_data_byte, byteorder = "big")
+                image.append(str(interesting_data_int))
+                counter += 1
+        #self.styleChoice.setText(str(image[0]))
+        img = QtGui.QImage(image, camera_x, camera_y, 3*camera_x, QtGui.QImage.Format_RGB888)
         pix = QtGui.QPixmap.fromImage(img)
         self.video_frame.setPixmap(pix)
+        #pix_map = QtGui.QPixmap("test.jpg")
+        #self.video_frame.setPixmap(pix_map) 
+        #print(image)
+        print("Klar!")
     
     def save_file(self):
         

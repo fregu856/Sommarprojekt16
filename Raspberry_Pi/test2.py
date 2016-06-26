@@ -15,8 +15,8 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)	# Skapa UDP-soc
 
 ##########################################################################
 # initialize the camera and grab a reference to the raw camera capture
-camera_x = 200
-camera_y = 200
+camera_x = 40
+camera_y = 40
 camera = PiCamera()
 camera.resolution = (camera_x, camera_y)
 camera.framerate = 32
@@ -29,12 +29,12 @@ counter = 0
  
 # capture frames from the camera
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-	print("New loop")
 	# grab the raw NumPy array representing the image, then initialize the timestamp
 	# and occupied/unoccupied text
+	print("New loop")
 	image = frame.array
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-	#print(image[0][1])
+	ok, image_jpg = cv2.imencode(".jpg", image)
 
 	key = cv2.waitKey(1) & 0xFF
  
@@ -53,11 +53,11 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	#client_socket.sendto(uint8_counter, (UDP_IP, UDP_PORT))	# Skicka byte:n till PC:n
 	#counter += 1
 	image_array = []
-	for row_index in range(camera_y):
-		for col_index in range(camera_x):
-			for byte_index in range(3):
-				uint8_value = np.uint8(image[row_index][col_index][byte_index])
-				image_array.append(uint8_value)
+	for row in image_jpg:
+		for entry in image_jpg[row]:
+			#print entry[0]
+			uint8_value = np.uint8(entry[0])
+			image_array.append(uint8_value)
 			#uint8_value = np.uint8(image[row_index][col_index][0])
 			#client_socket.sendto(uint8_value, (UDP_IP, UDP_PORT))
 			#print(uint8_value)
@@ -69,9 +69,11 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			#uint8_value = np.uint8(image[row_index][col_index][2])
 			#client_socket.sendto(uint8_value, (UDP_IP, UDP_PORT))
 			#print(uint8_value)
-	
-	for index in range(len(image_array)):
-		client_socket.sendto(image_array[index], (UDP_IP, UDP_PORT))
+	print(len(image_array))
+	trans_size = np.uint32(len(image_array))
+	#client_socket.sendto(trans_size, (UDP_IP, UDP_PORT))
+	for entry in image_array:
+		#print(entry)
+		client_socket.sendto(entry, (UDP_IP, UDP_PORT))
 				
-	time.sleep(1)		# Delay:a 1 sek
-	#break
+	time.sleep(10)		# Delay:a 10 sek
