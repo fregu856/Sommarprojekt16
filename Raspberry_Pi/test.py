@@ -52,12 +52,12 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	#print(str(uint8_counter))
 	#client_socket.sendto(uint8_counter, (UDP_IP, UDP_PORT))	# Skicka byte:n till PC:n
 	#counter += 1
-	image_array = []
-	for row_index in range(camera_y):
-		for col_index in range(camera_x):
-			for byte_index in range(3):
-				uint8_value = np.uint8(image[row_index][col_index][byte_index])
-				image_array.append(uint8_value)
+	#image_array = []
+	#for row_index in range(camera_y):
+		#for col_index in range(camera_x):
+			#for byte_index in range(3):
+				#uint8_value = np.uint8(image[row_index][col_index][byte_index])
+				#image_array.append(uint8_value)
 			#uint8_value = np.uint8(image[row_index][col_index][0])
 			#client_socket.sendto(uint8_value, (UDP_IP, UDP_PORT))
 			#print(uint8_value)
