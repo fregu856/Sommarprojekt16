@@ -1,8 +1,13 @@
 import serial
 
-# 9600 is the baudrate, should match serial baudrate in arduino
-serial_port = serial.Serial('/dev/ttyACM0', 9600)
+stop = 0
+forward = 1
+backward = 2
+right = 3
+left = 4
 
-# Make the led on arduino to blink 2 times
+# 9600 is the baudrate, should match serial baudrate in arduino
+serial_port = serial.Serial('/dev/ttyACM0', 9600) 
+
 while True:
-    serial_port.write('2')
+  serial_port.write(str(forward))
