@@ -1,0 +1,21 @@
+{% extends "header.html" %}
+
+{% block body %}
+
+<br />
+<h4>Result:<h4>
+<br />
+
+<ul>
+{% for element in data %}
+    <li>
+        <a href="/">
+            {{ element }}
+        </a>
+    </li>
+{% endfor %}
+
+
+</ul>
+
+{% endblock %}

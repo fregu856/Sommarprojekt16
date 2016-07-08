@@ -1,0 +1,56 @@
+{% extends "header.html" %}
+
+{% block body %}
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+        Search result:
+    </div>
+    
+    {% if query_result != () %}
+    <form name="choice_form" action="/choice_result/" method="post">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <br />    
+                <label>
+                    <input type="checkbox" onClick="toggle_all(this)" style="margin-left: 10px" />
+                    Select all
+                </label>
+                
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>ID</th>
+                        <th>Date</th>
+                        <th>Duration (min)</th>
+                        <th>Distance (km)</th>
+                        <th>VIN</th>
+                        <th>OBD DTCs</th>
+                        <th>UDS DTCs</th>
+                        <th>pdf</th>
+                    </tr>
+                </thead>
+                
+                <tbody>
+                    {% for element in query_result %}
+                        <tr>
+                            <td><input type="checkbox" name="{{ element[0] }}" class="data_checkbox" /></td>
+                            <td>{{ element[0] }}</td>   <!-- ID -->
+                            <td>{{ element[8] }}</td>   <!-- Date -->
+                            <td>{{ element[1] }}</td>   <!-- Duration -->
+                            <td>{{ element[2] }}</td>   <!-- Distance -->
+                            <td>{{ element[3] }}</td>   <!-- VIN -->
+                            <td>{{ element[5] }}</td>   <!-- OBD DTCs -->
+                            <td>{{ element[6] }}</td>  <!-- UDS DTCs -->
+                            <td><a href={{ "/static/pdf_data/" ~ element[0] ~ ".pdf" }}><img src="/static/images/Adobe_PDF_file_icon_24x24.png" style="max-width: 22px" alt="pdf" /></a></td>   <!-- PDF -->
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <input class="btn btn-success" type="submit" value="Analyze" style="margin-left: 10px" />
+    </form> 
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -5,22 +5,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width-device-width, initial-scale=1" />
     <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" />
-    <script>
-        function toggle_all(source) // Note that this script must be in the head!
-        {
-            checkboxes = document.getElementsByClassName("data_checkbox");
-            for (var i = 0; i < checkboxes.length; ++i)
-            {
-                checkboxes[i].checked = source.checked;
-            }      
-        }
-    </script>
 </head>
 
 <header>
     <div class="navbar-header">
         <a class="navbar-brand" href="/">
-            <img style="max-width:250px; margin-top: -7px;" src="{{ url_for('static', filename='images/T-engineering_text.jpg') }}" alt="T-engineering_logo" />
+            
         </a>  
     </div>
     
@@ -33,13 +23,35 @@
     
 <body>
     
-    <div class="container" style="min-height:100% width:80%">
+    <div class="container-fluid" style="min-height:100%; max-width: 1200px">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-danger">
+                        <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+                        {{message}}
+                    </div>
+                {% endfor %}
+           {% endif %}
+        {% endwith %}
+    
         {% block body %}
         {% endblock %} 
     </div>
     
-    <script src="//code.jquery.com/jquery-1.11.1.min.js" />
-    <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}" />
+    <!-- Script (verkar spela roll i vilken ordning dessa placeras) -->
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script>
+        function toggle_all(source) // Note that this script must be in the head!
+        {
+            checkboxes = document.getElementsByClassName("data_checkbox");
+            for (var i = 0; i < checkboxes.length; ++i)
+            {
+                checkboxes[i].checked = source.checked;
+            }      
+        }
+    </script>
 </body>
 
 </html>

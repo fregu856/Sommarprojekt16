@@ -1,0 +1,118 @@
+<!DOCTYPE>
+<hmtl>
+<head>
+    <title>Test-hemsida</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width-device-width, initial-scale=1" />
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" />
+</head>
+
+<header>
+    <div class="navbar-header"> 
+    </div>
+    
+    <div class="container-fluid">    
+    </div>
+</header>
+
+<br />
+<br />
+    
+<body>
+    
+    <div class="container-fluid" style="min-height:100%; max-width: 1200px">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-danger">
+                        <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+                        {{message}}
+                    </div>
+                {% endfor %}
+           {% endif %}
+        {% endwith %}
+    
+         <div style="text-align: center">
+             
+             <button type="button" id="up_button" class="btn btn-default" style="width: 90px; height: 40px">Up</button>
+             <br />
+             
+             <div class="btn-group" role="group">
+                <button type="button" id="left_button" class="btn btn-default" style="width: 90px; height: 40px">Left</button>
+                <button type="button" class="btn btn-danger" style="width: 90px; height: 40px">Stop</button>
+                <button type="button" id="right_button" class="btn btn-default" style="width: 90px; height: 40px">Right</button>
+            </div>
+            <br />
+
+            <button type="button" id="down_button" class="btn btn-default" style="width: 90px; height: 40">Down</button>
+            
+            <p id="test"></p>
+            
+        </div> 
+    </div>
+    
+    <!-- Script (verkar spela roll i vilken ordning dessa placeras) -->
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    
+    <script type="text/javascript" charset="utf-8">
+        function connect_handler()
+        {
+            socket.emit('my event', {data: 'I\'m connected!'});
+        }
+        
+        function up_button_press_handler() 
+        {
+            socket.emit("button_event", {data: "1"});
+        }
+        function up_button_release_handler() 
+        {
+            socket.emit("button_event", {data: "0"});
+        }
+        
+        function down_button_press_handler() 
+        {
+            socket.emit("button_event", {data: "2"});
+        }
+        function down_button_release_handler() 
+        {
+            socket.emit("button_event", {data: "0"});
+        }
+        
+        function right_button_press_handler() 
+        {
+            socket.emit("button_event", {data: "3"});
+        }
+        function right_button_release_handler() 
+        {
+            socket.emit("button_event", {data: "0"});
+        }
+        
+        function left_button_press_handler() 
+        {
+            socket.emit("button_event", {data: "4"});
+        }
+        function left_button_release_handler() 
+        {
+            socket.emit("button_event", {data: "0"});
+        }
+        
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+        socket.on('connect', connect_handler);
+        
+        document.getElementById("up_button").addEventListener("mousedown", up_button_press_handler);   
+        document.getElementById("up_button").addEventListener("mouseup", up_button_release_handler);
+
+        document.getElementById("down_button").addEventListener("mousedown", down_button_press_handler);   
+        document.getElementById("down_button").addEventListener("mouseup", down_button_release_handler);  
+        
+        document.getElementById("right_button").addEventListener("mousedown", right_button_press_handler);   
+        document.getElementById("right_button").addEventListener("mouseup", right_button_release_handler);  
+        
+        document.getElementById("left_button").addEventListener("mousedown", left_button_press_handler);   
+        document.getElementById("left_button").addEventListener("mouseup", left_button_release_handler);  
+    </script>
+</body>
+
+</html>
