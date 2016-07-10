@@ -33,20 +33,27 @@
         {% endwith %}
     
          <div style="text-align: center">
+         
+             <img id="video_frame" src="" />
              
+             <br />
+             <br />
+             
+             <!--
              <button type="button" id="up_button" class="btn btn-default" style="width: 90px; height: 40px">Up</button>
              <br />
              
              <div class="btn-group" role="group">
                 <button type="button" id="left_button" class="btn btn-default" style="width: 90px; height: 40px">Left</button>
-                <button type="button" class="btn btn-danger" style="width: 90px; height: 40px">Stop</button>
+                <button type="button" id="stop_button" class="btn btn-danger" style="width: 90px; height: 40px">Stop</button>
                 <button type="button" id="right_button" class="btn btn-default" style="width: 90px; height: 40px">Right</button>
             </div>
             <br />
 
             <button type="button" id="down_button" class="btn btn-default" style="width: 90px; height: 40">Down</button>
             
-            <p id="test"></p>
+            <p id="test"></p> 
+            -->
             
         </div> 
     </div>
@@ -62,45 +69,125 @@
             socket.emit('my event', {data: 'I\'m connected!'});
         }
         
-        function up_button_press_handler() 
+        // Buttons:
+        //function up_button_press_handler() 
+        //{
+        //    socket.emit("button_event", {data: "1"});
+        //}
+        //function up_button_release_handler() 
+        //{
+        //    socket.emit("button_event", {data: "0"});
+        //}
+        
+        //function down_button_press_handler() 
+        //{
+        //    socket.emit("button_event", {data: "2"});
+        //}
+        //function down_button_release_handler() 
+        //{
+        //   socket.emit("button_event", {data: "0"});
+        //}
+        
+        //function right_button_press_handler() 
+        //{
+        //    socket.emit("button_event", {data: "3"});
+        //}
+        //function right_button_release_handler() 
+        //{
+        //    socket.emit("button_event", {data: "0"});
+        //}
+        
+        //function left_button_press_handler() 
+        //{
+         //   socket.emit("button_event", {data: "4"});
+        //}
+        //function left_button_release_handler() 
+        //{
+        //    socket.emit("button_event", {data: "0"});
+        //}
+        
+        //function stop_button_press_handler() 
+        //{
+        //    socket.emit("button_event", {data: "0"});
+        //}
+        
+        // Keyboard:    
+        function key_press_handler(event) 
         {
-            socket.emit("button_event", {data: "1"});
-        }
-        function up_button_release_handler() 
-        {
-            socket.emit("button_event", {data: "0"});
+            var pressed_key_utf8 = event.keyCode;
+            switch (pressed_key_utf8) 
+            {
+                case 87:    // W key (up)
+                case 119:   // w key (up)
+                {
+                    socket.emit("key_event", {data: "1"});
+                    break;
+                }
+                
+                case 83:  // S key (down)
+                case 115:  // s key (down)
+                {
+                    socket.emit("key_event", {data: "2"});
+                    break;
+                }
+                
+                case 68:  // D key (right)
+                case 100:  // d key (right)
+                {
+                    socket.emit("key_event", {data: "3"});
+                    break;
+                }
+                
+                case 65:  // A key (left)
+                case 97:  // a key (left)
+                {
+                    socket.emit("key_event", {data: "4"});
+                    break;
+                }
+ 
+                default:
+                {
+                    break;
+                }
+            }           
         }
         
-        function down_button_press_handler() 
+        function key_up_handler(event) 
         {
-            socket.emit("button_event", {data: "2"});
-        }
-        function down_button_release_handler() 
-        {
-            socket.emit("button_event", {data: "0"});
-        }
-        
-        function right_button_press_handler() 
-        {
-            socket.emit("button_event", {data: "3"});
-        }
-        function right_button_release_handler() 
-        {
-            socket.emit("button_event", {data: "0"});
-        }
-        
-        function left_button_press_handler() 
-        {
-            socket.emit("button_event", {data: "4"});
-        }
-        function left_button_release_handler() 
-        {
-            socket.emit("button_event", {data: "0"});
+            var released_key_utf8 = event.keyCode;
+            switch (released_key_utf8) 
+            {
+                case 87:    // W key (up)
+                case 119:   // w key (up)
+                case 83:    // S key (down)
+                case 115:   // s key (down)
+                case 68:    // D key (right)
+                case 100:   // d key (right)
+                case 65:    // A key (left)
+                case 97:    // a key (left)
+                {
+                    socket.emit("key_event", {data: "0"});
+                    break;
+                }
+ 
+                default:
+                {
+                   break; 
+                }       
+            }                
         }
         
+        function video_handler(sent_dict)
+        {
+            document.getElementById("video_frame").src = "static/images/image.jpg?" + new Date().getTime(); // Break the cache (so it actually gets the updated image, and don't use the one stored in cache)
+        }
+
         var socket = io.connect('http://' + document.domain + ':' + location.port);
         socket.on('connect', connect_handler);
         
+        socket.on("video_test", video_handler);
+        
+        // Buttons:
         document.getElementById("up_button").addEventListener("mousedown", up_button_press_handler);   
         document.getElementById("up_button").addEventListener("mouseup", up_button_release_handler);
 
@@ -111,7 +198,13 @@
         document.getElementById("right_button").addEventListener("mouseup", right_button_release_handler);  
         
         document.getElementById("left_button").addEventListener("mousedown", left_button_press_handler);   
-        document.getElementById("left_button").addEventListener("mouseup", left_button_release_handler);  
+        document.getElementById("left_button").addEventListener("mouseup", left_button_release_handler); 
+        
+        document.getElementById("stop_button").addEventListener("mousedown", stop_button_press_handler);  
+        
+        // Keyboard:
+        document.onkeypress = key_press_handler;
+        document.onkeyup = key_up_handler;     
     </script>
 </body>
 
