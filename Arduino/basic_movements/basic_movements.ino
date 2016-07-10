@@ -10,6 +10,9 @@ const int forward_int = 1;
 const int backward_int = 2;
 const int right_int = 3;
 const int left_int = 4;
+const int right_small_int = 5;
+const int left_small_int = 6;
+
 
 int manual_state = stop_int;
 
@@ -70,7 +73,35 @@ void move_right()
   analogWrite(EN_L, 180); // motor speed left 
 }
 
+void move_right_small()
+{
+  // right side backward
+  digitalWrite(IN1_R, HIGH);
+  digitalWrite(IN2_R, LOW);
+ 
+  // left side forward
+  digitalWrite(IN1_L, HIGH);
+  digitalWrite(IN2_L, LOW);
+ 
+  analogWrite(EN_R, 170); // motor speed right
+  analogWrite(EN_L, 190); // motor speed left 
+}
+
 void move_left()
+{
+  // right side forward
+  digitalWrite(IN1_R, LOW);
+  digitalWrite(IN2_R, HIGH);
+ 
+  // left side backward
+  digitalWrite(IN1_L, LOW);
+  digitalWrite(IN2_L, HIGH);
+ 
+  analogWrite(EN_R, 190); // motor speed right
+  analogWrite(EN_L, 170); // motor speed left 
+}
+
+void move_left_small()
 {
   // right side forward
   digitalWrite(IN1_R, LOW);
@@ -127,6 +158,18 @@ void run_manual_state()
      break;
    }
    
+   case right_small_int:
+   {
+     move_right_small();
+     break;
+   }
+   
+   case left_small_int:
+   {
+     move_left_small();
+     break;
+   }
+   
  }
 }
 
@@ -139,7 +182,20 @@ void read_serial()
         || serial_input == backward_int || serial_input == right_int
         || serial_input == left_int)
     {
-      manual_state = serial_input;
+      if (manual_state == forward_int && serial_input == right_int)
+      {
+          manual_state = right_small_int;
+      }
+      
+      else if (manual_state == forward_int && serial_input == left_int)
+      {
+          manual_state = left_small_int;
+      }
+      
+      else
+      {
+         manual_state = serial_input;
+      }
     }
     
     else

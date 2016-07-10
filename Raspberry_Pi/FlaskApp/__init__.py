@@ -22,13 +22,15 @@ from threading import Thread
 #left = 4
 
 # 9600 is the baudrate, should match serial baudrate in arduino
-#serial_port = serial.Serial('/dev/ttyACM0', 9600) 
+serial_port = serial.Serial('/dev/ttyACM0', 9600) 
 
 app = Flask(__name__)
-socketio = SocketIO(app, async_mode = "threading")
+socketio = SocketIO(app, async_mode = "threading") # Without "async_mode = "threading", sending stuff to the cliend (via socketio) doesn't work!
 
 def video_thread():
     camera = PiCamera()
+    camera.hflip = True # | Rotate 180 deg if mounted upside down
+    camera.vflip = True # |
     camera.resolution = (640, 480)
     camera.framerate = 32
     rawCapture = PiRGBArray(camera, size=(640, 480))
@@ -71,26 +73,22 @@ def phone():
         
 @socketio.on("my event")
 def handle_my_custom_event(sent_dict):
-    #print("Recieved message: " + sent_dict["data"])
-    pass
+    print("Recieved message: " + sent_dict["data"])
        
 @socketio.on("button_event")
 def handle_button_event(sent_dict):
-    #print("Recieved message: " + sent_dict["data"])
-    #serial_port.write(sent_dict["data"])
-    socketio.emit("video_test", {"data": "Test"})
+    print("Recieved message: " + sent_dict["data"])
+    serial_port.write(sent_dict["data"])
 
 @socketio.on("touch_event")
 def handle_touch_event(sent_dict):
-    #print("Recieved message: " + sent_dict["data"])
-    #serial_port.write(sent_dict["data"])
-    pass
+    print("Recieved message: " + sent_dict["data"])
+    serial_port.write(sent_dict["data"])
 
 @socketio.on("key_event")
 def handle_key_event(sent_dict):
-    #print("Recieved message: " + sent_dict["data"])
-    #serial_port.write(sent_dict["data"])
-    pass
+    print("Recieved message: " + sent_dict["data"])
+    serial_port.write(sent_dict["data"])
 
 @app.errorhandler(404)
 def page_not_found(e):
