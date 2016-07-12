@@ -5,6 +5,12 @@ const int IN2_R = 8;
 const int IN1_L = 4;
 const int IN2_L = 2;
 
+const int IR_F = 0;     // IR sensor forward
+const int IR_R_F = 1;   // IR sensor right, forward
+const int IR_R_B = 2;   // IR sensor right, back
+const int IR_L_B = 3;   // IR sensor left, forward
+const int IR_L_F = 4;   // IR sensor left, back
+
 const int stop_int = 0;
 const int forward_int = 1;
 const int backward_int = 2;
@@ -209,6 +215,26 @@ void read_serial()
   
 }
 
+void read_IR_sensors()
+{
+    int IR_F_value = analogRead(IR_F);
+    int IR_R_F_value = analogRead(IR_R_F);
+    int IR_R_B_value = analogRead(IR_R_B);
+    int IR_L_B_value = analogRead(IR_L_B);
+    int IR_L_F_value = analogRead(IR_L_F);
+    
+    //Serial.println("IR_F_value:");
+    //Serial.println(IR_F_value);
+    //Serial.println("IR_R_F_value:");
+    //Serial.println(IR_R_F_value);
+    //Serial.println("IR_R_B_value:");
+    //Serial.println(IR_R_B_value);
+    //Serial.println("IR_L_B_value:");
+    //Serial.println(IR_L_B_value);
+    //Serial.println("IR_L_F_value:");
+    //Serial.println(IR_L_F_value);
+}
+
 ///////////////////////////////////////////////////////////////////////
 // main loop
 ///////////////////////////////////////////////////////////////////////
@@ -216,6 +242,7 @@ void loop()
 {  
  read_serial();
  run_manual_state();
+ read_IR_sensors();
  
  delay(50);  // delay for loop frequency of roughly 20 Hz
 }
