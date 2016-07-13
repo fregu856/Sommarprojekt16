@@ -5,12 +5,6 @@ const int IN2_R = 8;
 const int IN1_L = 4;
 const int IN2_L = 2;
 
-const int IR_F = 0;     // IR sensor forward
-const int IR_R_F = 1;   // IR sensor right, forward
-const int IR_R_B = 2;   // IR sensor right, back
-const int IR_L_B = 3;   // IR sensor left, forward
-const int IR_L_F = 4;   // IR sensor left, back
-
 const int stop_int = 0;
 const int forward_int = 1;
 const int backward_int = 2;
@@ -19,11 +13,21 @@ const int left_int = 4;
 const int right_small_int = 5;
 const int left_small_int = 6;
 
-
 int manual_state = stop_int;
+
+int IR_latest_reading[5]; // The most recent reading, for each of the 5 IR sensors (array of 5 elements)
+int IR_reading[5][10]; // 2D-array with the 10 latest readings, for each the 5 IR-sensors
+float IR_median[5]; // Median value of the 10 latest readings, for each of the 5 IR sensors
+float IR_distance[5]; // Current distance for each of the 5 IR sensors (after filtering and conversion)	
 
 // Top speed: analogWrite(*some pin*, 255)
 // No speed: analogWrite(*some pin*, 0)
+
+// IR0: IR sensor Front
+// IR1: IR sensor Right-Front 
+// IR2: IR sensor Right-Back
+// IR3: IR sensor Left-Back
+// IR4: IR sensor Left-Front
 
 void setup()
 {
@@ -217,22 +221,74 @@ void read_serial()
 
 void read_IR_sensors()
 {
-    int IR_F_value = analogRead(IR_F);
-    int IR_R_F_value = analogRead(IR_R_F);
-    int IR_R_B_value = analogRead(IR_R_B);
-    int IR_L_B_value = analogRead(IR_L_B);
-    int IR_L_F_value = analogRead(IR_L_F);
+    // Read analog pin 0 - 4 (A0 - A4) (analogRead returns result of 10-bit ADC, an int between 0 and 1023)
+    for (int sensor_ID = 0; sensor_ID <= 4; ++sensor_ID)
+    {
+        IR_latest_reading[sensor_ID] = analogRead(sensor_ID);
+    }
+}
+
+float get_median(int array[], int no_of_elements)
+{
+    float median;
     
-    //Serial.println("IR_F_value:");
-    //Serial.println(IR_F_value);
-    //Serial.println("IR_R_F_value:");
-    //Serial.println(IR_R_F_value);
-    //Serial.println("IR_R_B_value:");
-    //Serial.println(IR_R_B_value);
-    //Serial.println("IR_L_B_value:");
-    //Serial.println(IR_L_B_value);
-    //Serial.println("IR_L_F_value:");
-    //Serial.println(IR_L_F_value);
+    // Sort array using Bulle sort:
+    for (int i = 0; i < no_of_elements - 1; ++i) // for no_of_elements - 1 times: (no of needed cycles in the worst case)
+    {
+        for (int k = 0; k < no_of_elements - (i + 1); ++k)
+        {
+            if (array[k] > array[k + 1])
+            {
+                // Swap positions:
+                int temp_container = array[k];
+                array[k] = array[k + 1];
+                array[k + 1] = temp_container;
+            }
+        }
+    }
+    
+    // Get median value (two different cases depending on whether even no of elements or not)
+    if (no_of_elements % 2 != 0) // if ODD no of elements: (if the remainder when dividing with 2 is non-zero)
+    {
+        int median_index = no_of_elements/2 - (no_of_elements/2 % 2); // median_index = floor(no_of_elements/2)
+        median = array[median_index];
+    }
+    else // if EVEN no of elements: (if there is no remainder when dividing with 2)
+    {
+        int median_index = no_of_elements/2;
+        median = (array[median_index] + array[median_index - 1])/2.f; // "2.f" makes sure we don't do integer division (which eg would give ous 5 instead of 5.5)
+    }
+
+    return median;
+}
+
+void filter_IR_values()
+{
+    for (int sensor_ID = 0; sensor_ID <= 4; ++sensor_ID) // for IR0 to IR4:
+    {
+        // Shift out the oldest reading:
+        for (int reading_index = 9; reading_index >= 1; --reading_index)
+        {
+            IR_reading[sensor_ID][reading_index] = IR_reading[sensor_ID][reading_index - 1];
+        }
+        
+        // Insert the latest reading:
+        IR_reading[sensor_ID][0] = IR_latest_reading[sensor_ID];
+        
+        // Get the median value of the 10 latest readings: (filter sensor readings)
+        int size = sizeof(IR_reading[sensor_ID])/sizeof(int); // We get the number of elements (ints) in the array by dividing the size of the array (in no of bytes) with the size of one int (in no of bytes)
+        int array_copy[] = {IR_reading[sensor_ID][0], IR_reading[sensor_ID][1], // Need to make a copy here, "get_median" apparently does something weird with its passed array 
+                            IR_reading[sensor_ID][2], IR_reading[sensor_ID][3], 
+                            IR_reading[sensor_ID][4], IR_reading[sensor_ID][5], 
+                            IR_reading[sensor_ID][6], IR_reading[sensor_ID][7], 
+                            IR_reading[sensor_ID][8], IR_reading[sensor_ID][9]}; 
+        IR_median[sensor_ID] = get_median(array_copy, size);
+    }
+}
+
+void test()
+{
+    Serial.println(IR_median[0]);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -240,14 +296,12 @@ void read_IR_sensors()
 ///////////////////////////////////////////////////////////////////////
 void loop()
 {  
- read_serial();
- run_manual_state();
- read_IR_sensors();
- 
- delay(50);  // delay for loop frequency of roughly 20 Hz
+    read_serial();
+    run_manual_state();
+    read_IR_sensors();
+    filter_IR_values();
+    
+    test();
+    
+    delay(50);  // delay for loop frequency of roughly 20 Hz
 }
-
-
-
-
-
