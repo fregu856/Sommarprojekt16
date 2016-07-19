@@ -1,3 +1,9 @@
+// Include all structs: (this is needed because the arduino IDE automatically generate function 
+// declarations and places them just after the pre-processor statements (after the includes),
+// without this any code where any type of struct is used as an argument to some function would not 
+// compile, since the structs has yet to be defined)  
+#include "structs.h"
+
 const int EN_R = 10;
 const int EN_L = 3;
 const int IN1_R = 7;
@@ -25,14 +31,6 @@ int IR_latest_reading[5]; // The most recent reading, for each of the 5 IR senso
 int IR_reading[5][10]; // 2D-array with the 10 latest readings, for each the 5 IR-sensors (a int array of int arrays)
 float IR_median[5]; // Median value of the 10 latest readings, for each of the 5 IR sensors
 float IR_distance[5]; // Current distance for each of the 5 IR sensors (after filtering and conversion)  
-
-// Struct describing an ADC to distance-pair (an instance of the struct will contain an ADC value
-// read with analogRead and its corresponding distance, for a specific IR sensor)
-typedef struct
-{
-  float ADC_value;
-  float distance;
-} ADC_distance_pair;
 
 // Look up table (ADC value from analogRead -> distance) for IR sensor 0 (front sensor)
 // (an array of ADC_distance_pairs)
@@ -97,7 +95,7 @@ ADC_distance_pair IR2_table[] =
 ADC_distance_pair IR3_table[] =
 {
   {100, 80},
-  {100, 70},
+  {102, 70},
   {106, 60},
   {118, 50},
   {138, 40},
@@ -132,18 +130,6 @@ ADC_distance_pair IR4_table[] =
 
 // Top speed: analogWrite(*some pin*, 255)
 // No speed: analogWrite(*some pin*, 0)
-
-void setup()
-{
- pinMode(EN_R, OUTPUT);  
- pinMode(EN_L, OUTPUT);
- pinMode(IN1_R, OUTPUT);  
- pinMode(IN2_R, OUTPUT);
- pinMode(IN1_L, OUTPUT);
- pinMode(IN2_L, OUTPUT);
- 
- Serial.begin(9600);  // baudrate = 9600 bps
-}
 
 void move_forward()
 {
@@ -336,7 +322,7 @@ float get_median(int array[], int no_of_elements)
 {
     float median;
     
-    // Sort array using Bulle sort:
+    // Sort array using Bubble sort:
     for (int i = 0; i < no_of_elements - 1; ++i) // for no_of_elements - 1 times: (no of needed cycles in the worst case)
     {
         for (int k = 0; k < no_of_elements - (i + 1); ++k)
@@ -390,23 +376,77 @@ void filter_IR_values()
     }
 }
 
-void test()
+float lookup_distance(ADC_distance_pair ADC_dist_table[], float ADC_value, int table_size)
 {
-    Serial.println(IR_median[1]);
+    // Return minimum value if "ADC_value" is smaller than the smallest table value:
+	if(ADC_value <= ADC_dist_table[0].ADC_value)	
+    {
+        return ADC_dist_table[0].distance;
+    }
+
+    // Return maximum value if "ADC_value" is greater than the biggest table value:
+	if(ADC_value >= ADC_dist_table[table_size-1].ADC_value)
+	{
+        return ADC_dist_table[table_size-1].distance;
+    }
+
+    // Linear interpolation:
+	for(int i = 0; i < table_size-1; i++)
+	{
+        // Interpolate (linearly) if "ADC_value" is between two table values:
+		if (ADC_dist_table[i].ADC_value <= ADC_value && ADC_value <= ADC_dist_table[i+1].ADC_value) // Linjärinterpolera om ADC-värdet ligger mellan två tabell-värden
+		{
+			float diff_ADC = ADC_value - ADC_dist_table[i].ADC_value;
+			float step_length = ADC_dist_table[i+1].ADC_value - ADC_dist_table[i].ADC_value;
+
+			return ADC_dist_table[i].distance + (ADC_dist_table[i+1].distance - ADC_dist_table[i].distance)*(diff_ADC/step_length);
+		}
+	}
+    
+    // Return -1 if anything went wrong (we should never reach this section):
+	return -1;
 }
 
-///////////////////////////////////////////////////////////////////////
-// main loop
-///////////////////////////////////////////////////////////////////////
+void convert_IR_values()
+{
+    IR_distance[0] = lookup_distance(IR0_table, IR_median[0], 15);
+  	IR_distance[1] = lookup_distance(IR1_table, IR_median[1], 13);
+  	IR_distance[2] = lookup_distance(IR2_table, IR_median[2], 15);
+  	IR_distance[3] = lookup_distance(IR3_table, IR_median[3], 12);
+  	IR_distance[4] = lookup_distance(IR4_table, IR_median[4], 15);
+}
+
+void move_forward_with_control()
+{
+    
+}
+
+void test()
+{
+    Serial.println(IR_distance[0]);
+}
+
+void setup()
+{
+ pinMode(EN_R, OUTPUT);  
+ pinMode(EN_L, OUTPUT);
+ pinMode(IN1_R, OUTPUT);  
+ pinMode(IN2_R, OUTPUT);
+ pinMode(IN1_L, OUTPUT);
+ pinMode(IN2_L, OUTPUT);
+ 
+ Serial.begin(9600);  // baudrate = 9600 bps
+}
+
 void loop()
 {  
     read_serial();
     run_manual_state();
     read_IR_sensors();
     filter_IR_values();
+    convert_IR_values();
     
     test();
     
     delay(50);  // delay for loop frequency of roughly 20 Hz
 }
-
