@@ -19,6 +19,16 @@ const int left_int = 4;
 const int right_small_int = 5;
 const int left_small_int = 6;
 
+const double IR_sensor_distance_right = 12.5;		// Distance between the two IR-sensors on the right side [cm]
+const float IR_sensor_distance_left = 12.5;		// Distance between the two IR-sensors on the left side [cm]
+
+float IR_Yaw_right, IR_Yaw_left, Yaw, Yaw_rad;
+float p_part;
+float alpha;
+
+float Kp = 4;
+float Kd = 350;
+
 int manual_state = stop_int;
 
 // IR0: IR sensor Front
@@ -416,14 +426,72 @@ void convert_IR_values()
   	IR_distance[4] = lookup_distance(IR4_table, IR_median[4], 15);
 }
 
-void move_forward_with_control()
+void move_forward_with_control(float alpha_value)
 {
+  // right side forward:
+  digitalWrite(IN1_R, LOW);
+  digitalWrite(IN2_R, HIGH);
+ 
+  // left side forward:
+  digitalWrite(IN1_L, HIGH);
+  digitalWrite(IN2_L, LOW);
+
+  float right_speed = 150 - alpha_value;
+  float left_speed = 150 + alpha_value;
+  if (right_speed > 250)
+  {
+    right_speed = 250;
+  }
+  if (right_speed < 0)
+  {
+    right_speed = 0;
+  }
+  if (left_speed > 250)
+  {
+    left_speed = 250;
+  }
+  if (left_speed < 0)
+  {
+    left_speed = 0;
+  }
+  
+  analogWrite(EN_R, right_speed); // motor speed right
+  analogWrite(EN_L, left_speed); // motor speed left 
+  Serial.println(alpha_value);
+}
+
+void calculate_Yaw()
+{
+	float l_delta_right = IR_distance[1] - IR_distance[2];
+	float l_delta_left = IR_distance[3] - IR_distance[4];
+
+    // Calculate the angle relative the corridor walls, based on the right side IR sensors:
+	  IR_Yaw_right = (atan(l_delta_right/IR_sensor_distance_right)/3.1415926)*180;	
+    // Calculate the angle relative the corridor walls, based on the left side IR sensors:
+    IR_Yaw_left = (atan(l_delta_left/IR_sensor_distance_left)/3.1415926)*180;
     
+    // Take "Yaw" to be the mean:
+    Yaw = (IR_Yaw_right + IR_Yaw_left)/2;
+    // Convert to radians (to use in control algorithms, in degrees for display to user):
+    Yaw_rad = (Yaw/180)*3.1415926;
+}
+
+void calculate_p_part()
+{
+    p_part = IR_distance[2] - IR_distance[4];
+}
+
+void calculate_alpha()
+{
+    alpha = Kp*p_part + Kd*Yaw_rad;
 }
 
 void test()
 {
-    Serial.println(IR_distance[0]);
+    //Serial.println(IR_distance[0]);
+    //Serial.println(IR_Yaw_left);
+    //Serial.println(IR_Yaw_right);
+    //Serial.println(alpha);
 }
 
 void setup()
@@ -440,11 +508,15 @@ void setup()
 
 void loop()
 {  
-    read_serial();
-    run_manual_state();
+    //read_serial();
+    //run_manual_state();
     read_IR_sensors();
     filter_IR_values();
     convert_IR_values();
+    calculate_Yaw();
+    calculate_p_part();
+    calculate_alpha();
+    move_forward_with_control(alpha);
     
     test();
     
