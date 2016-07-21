@@ -15,11 +15,13 @@ import time
 
 from threading import Thread
 
-#stop = 0
-#forward = 1
-#backward = 2
-#right = 3
-#left = 4
+# stop = 0
+# forward = 1
+# backward = 2
+# right = 3
+# left = 4
+# manual = 5
+# auto = 6
 
 # 9600 is the baudrate, should match serial baudrate in arduino
 serial_port = serial.Serial('/dev/ttyACM0', 9600) 
@@ -79,16 +81,73 @@ def handle_my_custom_event(sent_dict):
 def handle_button_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
     serial_port.write(sent_dict["data"])
+    read_line = serial_port.readline()
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
 
 @socketio.on("touch_event")
 def handle_touch_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
     serial_port.write(sent_dict["data"])
+    read_line = serial_port.readline()
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
 
 @socketio.on("key_event")
 def handle_key_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
     serial_port.write(sent_dict["data"])
+    read_line = serial_port.readline()
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
+    print(read_line)
 
 @app.errorhandler(404)
 def page_not_found(e):

@@ -16,8 +16,9 @@ const int forward_int = 1;
 const int backward_int = 2;
 const int right_int = 3;
 const int left_int = 4;
-const int right_small_int = 5;
-const int left_small_int = 6;
+
+const int manual_int = 5;
+const int auto_int = 6;
 
 const double IR_sensor_distance_right = 12.5;		// Distance between the two IR-sensors on the right side [cm]
 const float IR_sensor_distance_left = 12.5;		// Distance between the two IR-sensors on the left side [cm]
@@ -30,6 +31,7 @@ float Kp = 4;
 float Kd = 350;
 
 int manual_state = stop_int;
+int mode = manual_int;
 
 // IR0: IR sensor Front
 // IR1: IR sensor Right-Front 
@@ -183,20 +185,6 @@ void move_right()
   analogWrite(EN_L, 180); // motor speed left 
 }
 
-void move_right_small()
-{
-  // right side backward
-  digitalWrite(IN1_R, HIGH);
-  digitalWrite(IN2_R, LOW);
- 
-  // left side forward
-  digitalWrite(IN1_L, HIGH);
-  digitalWrite(IN2_L, LOW);
- 
-  analogWrite(EN_R, 170); // motor speed right
-  analogWrite(EN_L, 190); // motor speed left 
-}
-
 void move_left()
 {
   // right side forward
@@ -209,20 +197,6 @@ void move_left()
  
   analogWrite(EN_R, 190); // motor speed right
   analogWrite(EN_L, 170); // motor speed left 
-}
-
-void move_left_small()
-{
-  // right side forward
-  digitalWrite(IN1_R, LOW);
-  digitalWrite(IN2_R, HIGH);
- 
-  // left side backward
-  digitalWrite(IN1_L, LOW);
-  digitalWrite(IN2_L, HIGH);
- 
-  analogWrite(EN_R, 180); // motor speed right
-  analogWrite(EN_L, 180); // motor speed left 
 }
 
 void stop()
@@ -266,57 +240,78 @@ void run_manual_state()
    {
      move_left();
      break;
-   }
-   
-   case right_small_int:
-   {
-     move_right_small();
-     break;
-   }
-   
-   case left_small_int:
-   {
-     move_left_small();
-     break;
-   }
-   
+   }   
  }
 }
 
 void read_serial()
 {
-  if (Serial.available())
-  {
-    int serial_input = Serial.read() - '0';
-    if (serial_input == stop_int || serial_input == forward_int
-        || serial_input == backward_int || serial_input == right_int
-        || serial_input == left_int)
+    if (Serial.available())
     {
-      if (manual_state == forward_int && serial_input == right_int)
-      {
-          manual_state = right_small_int;
-      }
-      
-      else if (manual_state == forward_int && serial_input == left_int)
-      {
-          manual_state = left_small_int;
-      }
-      
-      else
-      {
-         manual_state = serial_input;
-      }
-    }
-    
-    else
-    {
-      // stop the robot if there's something wrong with the serial 
-      // transmission (this shouldn't normally happen)
-      manual_state = stop_int;
-    }
-    
-  }
-  
+        int serial_input = Serial.read() - '0';
+        Serial.println(serial_input);
+        
+        // if in manual mode:
+        if (mode == manual_int)
+        {
+            // Change manual state if requested:
+            if (serial_input == stop_int || serial_input == forward_int
+            || serial_input == backward_int || serial_input == right_int
+            || serial_input == left_int)
+            {
+                manual_state = serial_input;
+            }
+            
+            // Change to auto mode if requested:
+            else if (serial_input == auto_int)
+            {
+                mode = auto_int; // set the mode to auto
+            }
+            
+            // Do nothing if manual is requested again:
+            else if (serial_input == manual_int)
+            {
+                
+            }
+            
+            else
+            {
+                manual_state = stop_int; // if something is weird: stop (this shouldn't happen)
+            }
+        }
+
+        // else if in auto mode:
+        else if (mode == auto_int)
+        {
+            // Change to manual mode if requested:
+            if (serial_input == manual_int)
+            {
+                mode = manual_int;
+                manual_state = stop_int; // don't move in the very first loop after a mode change
+            }
+            
+            // Do nothing if auto is requested again:
+            else if (serial_input == auto_int)
+            {
+                
+            }
+            
+            // Do nothing if manual state is requested in auto:
+            else if (serial_input == stop_int || serial_input == forward_int
+            || serial_input == backward_int || serial_input == right_int
+            || serial_input == left_int)
+            {
+                
+            }
+            
+            // If something is weird, stop (this shouldn't happen):
+            else
+            {
+                mode = manual_int;
+                manual_state = stop_int; 
+            }
+        }  
+    } 
 }
 
 void read_IR_sensors()
@@ -457,7 +452,7 @@ void move_forward_with_control(float alpha_value)
   
   analogWrite(EN_R, right_speed); // motor speed right
   analogWrite(EN_L, left_speed); // motor speed left 
-  Serial.println(alpha_value);
+  //Serial.println(alpha_value);
 }
 
 void calculate_Yaw()
@@ -508,17 +503,24 @@ void setup()
 
 void loop()
 {  
-    //read_serial();
-    //run_manual_state();
-    read_IR_sensors();
-    filter_IR_values();
-    convert_IR_values();
-    calculate_Yaw();
-    calculate_p_part();
-    calculate_alpha();
-    move_forward_with_control(alpha);
+    read_serial();
     
-    test();
+    if (mode == manual_int)
+    {
+        run_manual_state();
+    }
+    
+    else if (mode == auto_int)
+    {
+        read_IR_sensors();
+        filter_IR_values();
+        convert_IR_values();
+        calculate_Yaw();
+        calculate_p_part();
+        calculate_alpha();
+        move_forward_with_control(alpha);
+        test();
+    }
     
     delay(50);  // delay for loop frequency of roughly 20 Hz
 }

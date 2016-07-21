@@ -50,9 +50,14 @@
             <br />
 
             <button type="button" id="down_button" class="btn btn-default" style="width: 90px; height: 40">Down</button>
+            <br />
+            <br />
             
-            <p id="test"></p> 
-            
+            <div class="btn-group" role="group">
+                <button type="button" id="manual_button" class="btn btn-default" style="width: 90px; height: 40px">Manual</button>
+                <button type="button" id="auto_button" class="btn btn-default" style="width: 90px; height: 40px">Auto</button>
+            </div>
+            <br />
         </div> 
     </div>
     
@@ -62,6 +67,8 @@
     <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     
     <script type="text/javascript" charset="utf-8">
+        var previous_data = 0;
+        
         function connect_handler()
         {
             socket.emit('my event', {data: 'I\'m connected!'});
@@ -109,6 +116,16 @@
             socket.emit("button_event", {data: "0"});
         }
         
+        function manual_button_press_handler() 
+        {
+            socket.emit("button_event", {data: "5"});
+        }
+        
+        function auto_button_press_handler() 
+        {
+            socket.emit("button_event", {data: "6"});
+        }
+        
         // Keyboard:    
         function key_press_handler(event) 
         {
@@ -118,28 +135,44 @@
                 case 87:    // W key (up)
                 case 119:   // w key (up)
                 {
-                    socket.emit("key_event", {data: "1"});
+                    if (previous_data !== 1) // Only send data if it is new data (only send once per key press)
+                    {
+                        socket.emit("key_event", {data: "1"});
+                        previous_data = 1;
+                    } 
                     break;
                 }
                 
                 case 83:  // S key (down)
                 case 115:  // s key (down)
                 {
-                    socket.emit("key_event", {data: "2"});
+                    if (previous_data !== 2)
+                    {
+                        socket.emit("key_event", {data: "2"});
+                        previous_data = 2;
+                    } 
                     break;
                 }
                 
                 case 68:  // D key (right)
                 case 100:  // d key (right)
                 {
-                    socket.emit("key_event", {data: "3"});
+                    if (previous_data !== 3)
+                    {
+                        socket.emit("key_event", {data: "3"});
+                        previous_data = 3;
+                    } 
                     break;
                 }
                 
                 case 65:  // A key (left)
                 case 97:  // a key (left)
                 {
-                    socket.emit("key_event", {data: "4"});
+                    if (previous_data !== 4)
+                    {
+                        socket.emit("key_event", {data: "4"});
+                        previous_data = 4;
+                    } 
                     break;
                 }
  
@@ -165,6 +198,7 @@
                 case 97:    // a key (left)
                 {
                     socket.emit("key_event", {data: "0"});
+                    previous_data = 0;
                     break;
                 }
  
@@ -199,6 +233,9 @@
         document.getElementById("left_button").addEventListener("mouseup", left_button_release_handler); 
         
         document.getElementById("stop_button").addEventListener("mousedown", stop_button_press_handler);  
+        
+        document.getElementById("manual_button").addEventListener("mousedown", manual_button_press_handler); 
+        document.getElementById("auto_button").addEventListener("mousedown", auto_button_press_handler);
         
         // Keyboard:
         document.onkeypress = key_press_handler;

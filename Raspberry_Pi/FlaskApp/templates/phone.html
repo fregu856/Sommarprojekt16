@@ -49,8 +49,14 @@
             <br />
 
             <button type="button" id="down_button_ph" class="btn btn-default" style="width: 90px; height: 40">Down</button>
+            <br />
+            <br />
             
-            <p id="test"></p>
+            <div class="btn-group" role="group">
+                <button type="button" id="manual_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Manual</button>
+                <button type="button" id="auto_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Auto</button>
+            </div>
+            <br />
             
         </div> 
     </div>
@@ -107,6 +113,16 @@
             socket.emit("touch_event", {data: "0"});
         }
         
+        function manual_button_press_handler_ph() 
+        {
+            socket.emit("touch_event", {data: "5"});
+        }
+        
+        function auto_button_press_handler_ph() 
+        {
+            socket.emit("touch_event", {data: "6"});
+        }
+        
         function video_handler(sent_dict)
         {
             document.getElementById("video_frame_ph").src = "static/images/image.jpg?" + new Date().getTime(); // Break the cache (so it actually gets the updated image, and don't use the one stored in cache)
@@ -129,7 +145,10 @@
         document.getElementById("left_button_ph").addEventListener("touchstart", left_button_press_handler_ph);   
         document.getElementById("left_button_ph").addEventListener("touchend", left_button_release_handler_ph);
 
-        document.getElementById("stop_button_ph").addEventListener("touchstart", stop_button_press_handler_ph);          
+        document.getElementById("stop_button_ph").addEventListener("touchstart", stop_button_press_handler_ph);
+
+        document.getElementById("manual_button_ph").addEventListener("touchstart", manual_button_press_handler_ph);
+        document.getElementById("auto_button_ph").addEventListener("touchstart", auto_button_press_handler_ph);         
     </script>
 </body>
 
