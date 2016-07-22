@@ -58,6 +58,26 @@
                 <button type="button" id="auto_button" class="btn btn-default" style="width: 90px; height: 40px">Auto</button>
             </div>
             <br />
+            <br />
+            
+            
+  
+            <div class="row">
+                <div class="col-xs-6">
+                    <input type="text" class="form-control" placeholder="New Kp value" id="Kp_value" />
+                </div>
+                
+                <div class="col-xs-6">
+                    <input type="text" class="form-control" placeholder="New Kd value" id="Kd_value" />
+                </div>
+            </div>
+            <br />
+            
+            <button type="button" id="parameters_button" class="btn btn-default" style="width: 150px; height: 40px">Send parameters</button>
+
+            
+            
+            
         </div> 
     </div>
     
@@ -124,6 +144,15 @@
         function auto_button_press_handler() 
         {
             socket.emit("button_event", {data: "6"});
+        }
+        
+        function parameters_button_press_handler() 
+        {
+            var Kp_input = document.getElementById("Kp_value").value
+            var Kd_input = document.getElementById("Kd_value").value
+            console.log(Kp_input)
+            console.log(Kd_input)
+            socket.emit("parameters_event", {Kp: Kp_input, Kd: Kd_input});
         }
         
         // Keyboard:    
@@ -236,6 +265,8 @@
         
         document.getElementById("manual_button").addEventListener("mousedown", manual_button_press_handler); 
         document.getElementById("auto_button").addEventListener("mousedown", auto_button_press_handler);
+        
+        document.getElementById("parameters_button").addEventListener("mousedown", parameters_button_press_handler);
         
         // Keyboard:
         document.onkeypress = key_press_handler;

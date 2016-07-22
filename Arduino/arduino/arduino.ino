@@ -20,6 +20,10 @@ const int left_int = 4;
 const int manual_int = 5;
 const int auto_int = 6;
 
+const int Kp_and_Kd_int = 7;
+const int Kp_int = 8;
+const int Kd_int = 9;
+
 const double IR_sensor_distance_right = 12.5;		// Distance between the two IR-sensors on the right side [cm]
 const float IR_sensor_distance_left = 12.5;		// Distance between the two IR-sensors on the left side [cm]
 
@@ -27,8 +31,8 @@ float IR_Yaw_right, IR_Yaw_left, Yaw, Yaw_rad;
 float p_part;
 float alpha;
 
-float Kp = 4;
-float Kd = 350;
+int Kp = 4;
+int Kd = 350;
 
 int manual_state = stop_int;
 int mode = manual_int;
@@ -274,6 +278,22 @@ void read_serial()
                 
             }
             
+            else if (serial_input == Kp_and_Kd_int)
+            {
+                Kp = Serial.read() - '0';
+                Kd = Serial.read() - '0';
+            }
+            
+            else if (serial_input == Kp_int)
+            {
+                Kp = Serial.read() - '0';
+            }
+            
+            else if (serial_input == Kd_int)
+            {
+                Kd = Serial.read() - '0';
+            }
+            
             else
             {
                 manual_state = stop_int; // if something is weird: stop (this shouldn't happen)
@@ -300,6 +320,13 @@ void read_serial()
             else if (serial_input == stop_int || serial_input == forward_int
             || serial_input == backward_int || serial_input == right_int
             || serial_input == left_int)
+            {
+                
+            }
+            
+            // Do nothing if new control parameters are requested in auto: (only possible in manual)
+            else if (serial_input == Kp_and_Kd_int || serial_input == Kp_int
+            || serial_input == Kd_int)
             {
                 
             }
