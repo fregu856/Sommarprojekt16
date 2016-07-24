@@ -38,7 +38,7 @@ int manual_state = stop_int;
 int mode = auto_int;
 STATE AUTO_STATE = CORRIDOR; // current auto state is "CORRIDOR" per default
 
-#define CORRIDOR_SIDE_DISTANCE 35 // Distance for determining whether in corridor or not
+#define CORRIDOR_SIDE_DISTANCE 20 // Distance for determining whether in corridor or not
 #define DEAD_END_DISTANCE 15 // Distance to the front wall when it's time to turn around in a dead end
 
 int cycle_count; // counter that keeps track of the number of cycles (loops) in a specific state
@@ -558,25 +558,25 @@ void update_state()
     
     switch (AUTO_STATE)
 	{
-        //case DEAD_END:
-        //{
-        //    if (IR_0 > 70)
-        //    {
-        //        AUTO_STATE = CORRIDOR;
-        //    }
-        //    
-        //    break;
-        //}
+        case DEAD_END:
+        {
+            if (IR_0 > 70)
+            {
+                AUTO_STATE = CORRIDOR;
+            }
+            
+            break;
+        }
         
 		case CORRIDOR:
 		{
-			//if ((IR_0 < DEAD_END_DISTANCE) && (IR_1 < CORRIDOR_SIDE_DISTANCE)
-            //&& (IR_2 < CORRIDOR_SIDE_DISTANCE) && (IR_3 < CORRIDOR_SIDE_DISTANCE)
-            //&& (IR_4 < CORRIDOR_SIDE_DISTANCE))
-            //{
-            //    AUTO_STATE = DEAD_END;
-            //    cycle_count = 0;
-            //}
+			if ((IR_0 < DEAD_END_DISTANCE) && (IR_1 < CORRIDOR_SIDE_DISTANCE)
+            && (IR_2 < CORRIDOR_SIDE_DISTANCE) && (IR_3 < CORRIDOR_SIDE_DISTANCE)
+            && (IR_4 < CORRIDOR_SIDE_DISTANCE))
+            {
+                AUTO_STATE = DEAD_END;
+                cycle_count = 0;
+            }
             
             if ((IR_1 > CORRIDOR_SIDE_DISTANCE) || (IR_2 > CORRIDOR_SIDE_DISTANCE) 
             || (IR_3 > CORRIDOR_SIDE_DISTANCE) || (IR_4 > CORRIDOR_SIDE_DISTANCE))
@@ -606,7 +606,7 @@ void update_state()
 			
         case INTO_JUNCTION:
         {
-            if (cycle_count > 50)
+            if (cycle_count > 5)
             {
                 AUTO_STATE = DETERMINE_JUNCTION;
                 cycle_count = 0;
@@ -637,8 +637,7 @@ void update_state()
         
         case JUNCTION_A_R:
         {
-            //if ((cycle_count > 25) && (IR_0 > 70))
-            if (cycle_count > 40)
+            if (IR_0 > 50)
             {
                 AUTO_STATE = OUT_OF_JUNCTION;
                 cycle_count = 0;
@@ -649,8 +648,7 @@ void update_state()
         
         case JUNCTION_A_L:
         {
-            //if ((cycle_count > 25) && (IR_0 > 70))
-            if (cycle_count > 40)
+            if (IR_0 > 50)
             {
                 AUTO_STATE = OUT_OF_JUNCTION;
                 cycle_count = 0;
@@ -705,16 +703,16 @@ void run_state()
 {
     switch (AUTO_STATE)
 	{
-        //case DEAD_END:
-        //{
-        //    move_right();
-        //    ++cycle_count;
-        //    break;
-        //}
+        case DEAD_END:
+        {
+            move_right();
+            ++cycle_count;
+            break;
+        }
         
 		case CORRIDOR:
 		{
-			move_forward_with_control(150, alpha);
+			move_forward_with_control(100, alpha);
             ++cycle_count;
 			break;
 		}
@@ -728,13 +726,15 @@ void run_state()
 			
         case INTO_JUNCTION:
         {
-            move_forward_with_control(50, 0);
+            move_forward_with_control(100, 0);
             ++cycle_count;
             break;
         }
         
         case DETERMINE_JUNCTION:
         { 
+            stop();
+            ++cycle_count;
             break;
         }
         
@@ -782,7 +782,7 @@ void run_state()
         
         case OUT_OF_JUNCTION:
         {
-            move_forward_with_control(50, 0);
+            move_forward_with_control(100, 0);
             ++cycle_count;
             break;
         }
@@ -800,14 +800,14 @@ void test()
     //Serial.println(IR_Yaw_left);
     //Serial.println(IR_Yaw_right);
     //Serial.println(alpha);
-    Serial.println("******");
-    Serial.println("*******");
+    //Serial.println("******");
+    //Serial.println("*******");
     Serial.println(AUTO_STATE);
-    Serial.println(IR_distance[0]);
-    Serial.println(IR_distance[1]);
-    Serial.println(IR_distance[2]);
-    Serial.println(IR_distance[3]);
-    Serial.println(IR_distance[4]);
+    //Serial.println(IR_distance[0]);
+    //Serial.println(IR_distance[1]);
+    //Serial.println(IR_distance[2]);
+    //Serial.println(IR_distance[3]);
+    //Serial.println(IR_distance[4]);
 }
 
 void setup()
@@ -832,6 +832,8 @@ void loop()
     calculate_p_part();
     calculate_alpha();
     
+    test();
+    
     if (startup_counter < 40) // wait approx 2 secs
     {
         ++startup_counter;
@@ -846,8 +848,6 @@ void loop()
     {
         update_state();
         run_state();
-        
-        test();
     }
     
     delay(50);  // delay for loop frequency of roughly 20 Hz
