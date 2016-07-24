@@ -9,4 +9,20 @@ struct ADC_distance_pair
   float distance;
 };
 
+enum STATE
+{
+    DEAD_END = 1,
+    CORRIDOR = 2,
+    OUT_OF_CORRIDOR = 3,
+    INTO_JUNCTION = 4,
+    DETERMINE_JUNCTION = 5,
+    JUNCTION_A_R = 6,
+    JUNCTION_A_L = 7,
+    JUNCTION_B_R = 8,
+    JUNCTION_B_L = 9,
+    JUNCTION_C = 10,
+    JUNCTION_D = 11,
+    OUT_OF_JUNCTION = 12,
+};
+
 #endif

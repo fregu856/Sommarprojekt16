@@ -35,8 +35,14 @@ int Kp = 4;
 int Kd = 350;
 
 int manual_state = stop_int;
-int mode = manual_int;
+int mode = auto_int;
+STATE AUTO_STATE = CORRIDOR; // current auto state is "CORRIDOR" per default
 
+#define CORRIDOR_SIDE_DISTANCE 35 // Distance for determining whether in corridor or not
+#define DEAD_END_DISTANCE 15 // Distance to the front wall when it's time to turn around in a dead end
+
+int cycle_count; // counter that keeps track of the number of cycles (loops) in a specific state
+int startup_counter; // counter for giving the sensor values some time to get to normal after start of auto mode
 // IR0: IR sensor Front
 // IR1: IR sensor Right-Front 
 // IR2: IR sensor Right-Back
@@ -157,8 +163,8 @@ void move_forward()
   digitalWrite(IN1_L, HIGH);
   digitalWrite(IN2_L, LOW);
  
-  analogWrite(EN_R, 200); // motor speed right
-  analogWrite(EN_L, 200); // motor speed left 
+  analogWrite(EN_R, 150); // motor speed right
+  analogWrite(EN_L, 150); // motor speed left 
 }
 
 void move_backward()
@@ -171,8 +177,8 @@ void move_backward()
   digitalWrite(IN1_L, LOW);
   digitalWrite(IN2_L, HIGH);
  
-  analogWrite(EN_R, 200); // motor speed right
-  analogWrite(EN_L, 200); // motor speed left 
+  analogWrite(EN_R, 150); // motor speed right
+  analogWrite(EN_L, 150); // motor speed left 
 }
 
 void move_right()
@@ -185,8 +191,8 @@ void move_right()
   digitalWrite(IN1_L, HIGH);
   digitalWrite(IN2_L, LOW);
  
-  analogWrite(EN_R, 180); // motor speed right
-  analogWrite(EN_L, 180); // motor speed left 
+  analogWrite(EN_R, 150); // motor speed right
+  analogWrite(EN_L, 150); // motor speed left 
 }
 
 void move_left()
@@ -199,8 +205,8 @@ void move_left()
   digitalWrite(IN1_L, LOW);
   digitalWrite(IN2_L, HIGH);
  
-  analogWrite(EN_R, 190); // motor speed right
-  analogWrite(EN_L, 170); // motor speed left 
+  analogWrite(EN_R, 150); // motor speed right
+  analogWrite(EN_L, 150); // motor speed left 
 }
 
 void stop()
@@ -274,6 +280,7 @@ void read_serial()
             else if (serial_input == auto_int)
             {
                 mode = auto_int; // set the mode to auto
+                startup_counter = 0; // reset the startup counter, to give the user some time to get away
             }
             
             // Do nothing if manual is requested again:
@@ -332,7 +339,7 @@ void read_serial()
                 
             }
             
-            // Do nothing if manual state is requested in auto:
+            // Do nothing if a manual state is requested in auto:
             else if (serial_input == stop_int || serial_input == forward_int
             || serial_input == backward_int || serial_input == right_int
             || serial_input == left_int)
@@ -481,7 +488,7 @@ void convert_IR_values()
   	IR_distance[4] = lookup_distance(IR4_table, IR_median[4], 15);
 }
 
-void move_forward_with_control(float alpha_value)
+void move_forward_with_control(float speed, float alpha_value)
 {
   // right side forward:
   digitalWrite(IN1_R, LOW);
@@ -491,8 +498,8 @@ void move_forward_with_control(float alpha_value)
   digitalWrite(IN1_L, HIGH);
   digitalWrite(IN2_L, LOW);
 
-  float right_speed = 150 - alpha_value;
-  float left_speed = 150 + alpha_value;
+  float right_speed = speed - alpha_value;
+  float left_speed = speed + alpha_value;
   if (right_speed > 250)
   {
     right_speed = 250;
@@ -541,12 +548,266 @@ void calculate_alpha()
     alpha = Kp*p_part + Kd*Yaw_rad;
 }
 
+void update_state()
+{
+    float IR_0 = IR_distance[0];
+    float IR_1 = IR_distance[1];
+    float IR_2 = IR_distance[2];
+    float IR_3 = IR_distance[3];
+    float IR_4 = IR_distance[4];
+    
+    switch (AUTO_STATE)
+	{
+        //case DEAD_END:
+        //{
+        //    if (IR_0 > 70)
+        //    {
+        //        AUTO_STATE = CORRIDOR;
+        //    }
+        //    
+        //    break;
+        //}
+        
+		case CORRIDOR:
+		{
+			//if ((IR_0 < DEAD_END_DISTANCE) && (IR_1 < CORRIDOR_SIDE_DISTANCE)
+            //&& (IR_2 < CORRIDOR_SIDE_DISTANCE) && (IR_3 < CORRIDOR_SIDE_DISTANCE)
+            //&& (IR_4 < CORRIDOR_SIDE_DISTANCE))
+            //{
+            //    AUTO_STATE = DEAD_END;
+            //    cycle_count = 0;
+            //}
+            
+            if ((IR_1 > CORRIDOR_SIDE_DISTANCE) || (IR_2 > CORRIDOR_SIDE_DISTANCE) 
+            || (IR_3 > CORRIDOR_SIDE_DISTANCE) || (IR_4 > CORRIDOR_SIDE_DISTANCE))
+            {
+                AUTO_STATE = OUT_OF_CORRIDOR;
+                cycle_count = 0;
+            }
+            
+			break;
+		}
+        
+        case OUT_OF_CORRIDOR:
+        {
+            if (((IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
+            && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE)) 
+            || ((IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
+            && (IR_3 > CORRIDOR_SIDE_DISTANCE) && (IR_4 > CORRIDOR_SIDE_DISTANCE)) 
+            || ((IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
+            && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))) 
+            {
+                AUTO_STATE = INTO_JUNCTION;
+                cycle_count = 0;
+            }
+            
+            break;
+        }
+			
+        case INTO_JUNCTION:
+        {
+            if (cycle_count > 50)
+            {
+                AUTO_STATE = DETERMINE_JUNCTION;
+                cycle_count = 0;
+            }
+            break;
+        }
+        
+        case DETERMINE_JUNCTION:
+        {
+            if ((cycle_count > 20) && (IR_0 < CORRIDOR_SIDE_DISTANCE)
+            && (IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
+            && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))
+            {
+                AUTO_STATE = JUNCTION_A_R;
+                cycle_count = 0;
+            }
+            
+            else if ((cycle_count > 20) && (IR_0 < CORRIDOR_SIDE_DISTANCE)
+            && (IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
+            && (IR_3 > CORRIDOR_SIDE_DISTANCE) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
+            {
+                AUTO_STATE = JUNCTION_A_L;
+                cycle_count = 0;
+            }
+            
+            break;
+        }
+        
+        case JUNCTION_A_R:
+        {
+            //if ((cycle_count > 25) && (IR_0 > 70))
+            if (cycle_count > 40)
+            {
+                AUTO_STATE = OUT_OF_JUNCTION;
+                cycle_count = 0;
+            }
+            
+            break;
+        }
+        
+        case JUNCTION_A_L:
+        {
+            //if ((cycle_count > 25) && (IR_0 > 70))
+            if (cycle_count > 40)
+            {
+                AUTO_STATE = OUT_OF_JUNCTION;
+                cycle_count = 0;
+            }
+            
+            break;
+        }
+        
+        case JUNCTION_B_R:
+        {
+            
+            break;
+        }
+        
+        case JUNCTION_B_L:
+        {
+            
+            break;
+        }
+        
+        case JUNCTION_C:
+        {
+            
+            break;
+        }
+        
+        case JUNCTION_D:
+        {
+            
+            break;
+        }
+        
+        case OUT_OF_JUNCTION:
+        {
+            if ((IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
+            && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))
+            {
+                AUTO_STATE = CORRIDOR;
+                cycle_count = 0;
+            }
+            break;
+        }
+		
+		default:
+        {
+            break;
+        }
+	}   
+}
+
+void run_state()
+{
+    switch (AUTO_STATE)
+	{
+        //case DEAD_END:
+        //{
+        //    move_right();
+        //    ++cycle_count;
+        //    break;
+        //}
+        
+		case CORRIDOR:
+		{
+			move_forward_with_control(150, alpha);
+            ++cycle_count;
+			break;
+		}
+        
+        case OUT_OF_CORRIDOR:
+        {
+            move_forward_with_control(100, 0);
+            ++cycle_count;
+            break;
+        }
+			
+        case INTO_JUNCTION:
+        {
+            move_forward_with_control(50, 0);
+            ++cycle_count;
+            break;
+        }
+        
+        case DETERMINE_JUNCTION:
+        { 
+            break;
+        }
+        
+        case JUNCTION_A_R:
+        {
+            move_right();
+            ++cycle_count;
+            break;
+        }
+        
+        case JUNCTION_A_L:
+        {
+            move_left();
+            ++cycle_count;
+            break;
+        }
+        
+        case JUNCTION_B_R:
+        {
+            move_forward_with_control(100, 0); // always take the path most to the left (prio: left, forward, right)
+            ++cycle_count;
+            break;
+        }
+        
+        case JUNCTION_B_L:
+        {
+            move_left();
+            ++cycle_count;
+            break;
+        }
+        
+        case JUNCTION_C:
+        {
+            move_left();
+            ++cycle_count;
+            break;
+        }
+        
+        case JUNCTION_D:
+        {
+            move_left();
+            ++cycle_count;
+            break;
+        }
+        
+        case OUT_OF_JUNCTION:
+        {
+            move_forward_with_control(50, 0);
+            ++cycle_count;
+            break;
+        }
+		
+		default:
+        {
+            break;
+        }
+	}
+}
+
 void test()
 {
     //Serial.println(IR_distance[0]);
     //Serial.println(IR_Yaw_left);
     //Serial.println(IR_Yaw_right);
     //Serial.println(alpha);
+    Serial.println("******");
+    Serial.println("*******");
+    Serial.println(AUTO_STATE);
+    Serial.println(IR_distance[0]);
+    Serial.println(IR_distance[1]);
+    Serial.println(IR_distance[2]);
+    Serial.println(IR_distance[3]);
+    Serial.println(IR_distance[4]);
 }
 
 void setup()
@@ -563,22 +824,29 @@ void setup()
 
 void loop()
 {  
-    read_serial();
+    //read_serial();
+    read_IR_sensors();
+    filter_IR_values();
+    convert_IR_values();
+    calculate_Yaw();
+    calculate_p_part();
+    calculate_alpha();
     
-    if (mode == manual_int)
+    if (startup_counter < 40) // wait approx 2 secs
+    {
+        ++startup_counter;
+    }
+    
+    else if (mode == manual_int)
     {
         run_manual_state();
     }
     
     else if (mode == auto_int)
     {
-        read_IR_sensors();
-        filter_IR_values();
-        convert_IR_values();
-        calculate_Yaw();
-        calculate_p_part();
-        calculate_alpha();
-        move_forward_with_control(alpha);
+        update_state();
+        run_state();
+        
         test();
     }
     
