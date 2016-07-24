@@ -101,7 +101,7 @@ def handle_my_custom_event(sent_dict):
 @socketio.on("button_event")
 def handle_button_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
-    serial_port.write(sent_dict["data"])
+    serial_port.write(sent_dict["data"] + "\n") # "\n" is used as a delimiter char when the arduino reads the serial port
     read_line = serial_port.readline()
     print(read_line)
     print(read_line)
@@ -125,7 +125,7 @@ def handle_button_event(sent_dict):
 @socketio.on("touch_event")
 def handle_touch_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
-    serial_port.write(sent_dict["data"])
+    serial_port.write(sent_dict["data"] + "\n")
     read_line = serial_port.readline()
     print(read_line)
     print(read_line)
@@ -149,7 +149,7 @@ def handle_touch_event(sent_dict):
 @socketio.on("key_event")
 def handle_key_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
-    serial_port.write(sent_dict["data"])
+    serial_port.write(sent_dict["data"] + "\n")
     read_line = serial_port.readline()
     print(read_line)
     print(read_line)
@@ -182,9 +182,7 @@ def handle_parameters_event(sent_dict):
     Kd_input = check_parameter_input(Kd_input)
         
     if (Kp_input or Kp_input == 0) and (Kd_input or Kd_input == 0): # if valid, non-empty input for both Kp and Kd: send both Kp and Kd
-        serial_port.write("7") # 7 = Kp and Kd
-        serial_port.write(str(Kp_input))
-        serial_port.write(str(Kd_input))
+        serial_port.write("7" + "\n" + str(Kp_input) + "\n" + str(Kd_input) + "\n")
         print("New Kp and Kd sent!")
         read_line = serial_port.readline()
         print(read_line)
@@ -206,8 +204,7 @@ def handle_parameters_event(sent_dict):
         print(read_line)
         print(read_line)
     elif Kp_input or Kp_input == 0: # if only Kp:
-        serial_port.write("8") # 8 = Just Kp
-        serial_port.write(str(Kp_input))
+        serial_port.write("8" + "\n" + str(Kp_input) + "\n") # 8 = Just Kp
         print("New Kp sent!")
         read_line = serial_port.readline()
         print(read_line)
@@ -229,8 +226,7 @@ def handle_parameters_event(sent_dict):
         print(read_line)
         print(read_line)
     elif Kd_input or Kd_input == 0: # if only Kd:
-        serial_port.write("9") # 9 = Just Kd
-        serial_port.write(str(Kd_input))
+        serial_port.write("9" + "\n" + str(Kd_input) + "\n") # 9 = Just Kd
         print("New Kd sent!")
         read_line = serial_port.readline()
         print(read_line)

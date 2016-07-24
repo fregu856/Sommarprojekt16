@@ -250,9 +250,13 @@ void run_manual_state()
 
 void read_serial()
 {
-    if (Serial.available())
+    // (I found that "while" works better than "if", with "while" we always empty the input buffer)
+    while (Serial.available())
     {
-        int serial_input = Serial.read() - '0';
+        // Read the serial input: (a maximum of 8 bytes)
+        char input_buffer[8];
+        Serial.readBytesUntil('\n', input_buffer, 8); // read bytes until reach "\n"-char ('\n' are used as delimiter)
+        int serial_input = atoi(input_buffer); // convert the read bytes (chars) to the corresponding integer
         Serial.println(serial_input);
         
         // if in manual mode:
@@ -278,20 +282,32 @@ void read_serial()
                 
             }
             
+            // Update both Kp and Kd if both was sent:
             else if (serial_input == Kp_and_Kd_int)
             {
-                Kp = Serial.read() - '0';
-                Kd = Serial.read() - '0';
+                input_buffer[8] = {};
+                Serial.readBytesUntil('\n', input_buffer, 8);
+                Kp = atoi(input_buffer);
+                
+                input_buffer[8] = {};
+                Serial.readBytesUntil('\n', input_buffer, 8);
+                Kd = atoi(input_buffer);
             }
             
+            // Update Kp if only Kp was sent:
             else if (serial_input == Kp_int)
             {
-                Kp = Serial.read() - '0';
+                input_buffer[8] = {};
+                Serial.readBytesUntil('\n', input_buffer, 8);
+                Kp = atoi(input_buffer);
             }
             
+            // Update Kd if only Kd was sent:
             else if (serial_input == Kd_int)
             {
-                Kd = Serial.read() - '0';
+                input_buffer[8] = {};
+                Serial.readBytesUntil('\n', input_buffer, 8);
+                Kd = atoi(input_buffer);
             }
             
             else
@@ -324,11 +340,28 @@ void read_serial()
                 
             }
             
-            // Do nothing if new control parameters are requested in auto: (only possible in manual)
-            else if (serial_input == Kp_and_Kd_int || serial_input == Kp_int
-            || serial_input == Kd_int)
+            // Read both Kp and Kd (to clean the serial buffer), but don't update them in auto:
+            else if (serial_input == Kp_and_Kd_int)
             {
+                input_buffer[8] = {};
+                Serial.readBytesUntil('\n', input_buffer, 8);
                 
+                input_buffer[8] = {};
+                Serial.readBytesUntil('\n', input_buffer, 8);
+            }
+            
+            // Read Kp (to clean the serial buffer), but don't update it in auto:
+            else if (serial_input == Kp_int)
+            {
+                input_buffer[8] = {};
+                Serial.readBytesUntil('\n', input_buffer, 8);
+            }
+            
+            // Read Kd (to clean the serial buffer), but don't update it in auto:
+            else if (serial_input == Kd_int)
+            {
+                input_buffer[8] = {};
+                Serial.readBytesUntil('\n', input_buffer, 8);
             }
             
             // If something is weird, stop (this shouldn't happen):

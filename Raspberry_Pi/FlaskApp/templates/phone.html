@@ -57,6 +57,20 @@
                 <button type="button" id="auto_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Auto</button>
             </div>
             <br />
+            <br /> 
+  
+            <div class="row">
+                <div class="col-xs-6">
+                    <input type="text" class="form-control" placeholder="New Kp value" id="Kp_value_ph" />
+                </div>
+                
+                <div class="col-xs-6">
+                    <input type="text" class="form-control" placeholder="New Kd value" id="Kd_value_ph" />
+                </div>
+            </div>
+            <br />
+            
+            <button type="button" id="parameters_button_ph" class="btn btn-default" style="width: 150px; height: 40px">Send parameters</button>    
             
         </div> 
     </div>
@@ -123,6 +137,15 @@
             socket.emit("touch_event", {data: "6"});
         }
         
+        function parameters_button_press_handler_ph() 
+        {
+            var Kp_input = document.getElementById("Kp_value_ph").value
+            var Kd_input = document.getElementById("Kd_value_ph").value
+            console.log(Kp_input)
+            console.log(Kd_input)
+            socket.emit("parameters_event", {Kp: Kp_input, Kd: Kd_input});
+        }
+        
         function video_handler(sent_dict)
         {
             document.getElementById("video_frame_ph").src = "static/images/image.jpg?" + new Date().getTime(); // Break the cache (so it actually gets the updated image, and don't use the one stored in cache)
@@ -149,6 +172,8 @@
 
         document.getElementById("manual_button_ph").addEventListener("touchstart", manual_button_press_handler_ph);
         document.getElementById("auto_button_ph").addEventListener("touchstart", auto_button_press_handler_ph);         
+        
+        document.getElementById("parameters_button_ph").addEventListener("touchstart", parameters_button_press_handler_ph);
     </script>
 </body>
 
