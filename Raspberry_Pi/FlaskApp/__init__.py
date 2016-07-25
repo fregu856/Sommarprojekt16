@@ -73,14 +73,30 @@ def video_thread():
         # clear the stream in preparation for the next frame
         rawCapture.truncate(0)
         
-        time.sleep(0.1)		# Delay 0.05 sec (20 Hz)
-
+        time.sleep(0.1) # Delay 0.1 sec (~ 0 Hz)
+        
+def serial_thread():
+    for index in range(10000):
+        no_bytes_waiting = serial_port.inWaiting()
+        if no_bytes_waiting > 3: # the ardu sends 3 bytes at the time
+            start_byte = serial_port.read(size = 1) # read first byte (read 1 byte)
+            start_byte = ord(start_byte)
+            print(start_byte)
+            print(start_byte)
+            print(start_byte)
+            print(start_byte)
+            print(start_byte)
+            print(start_byte)
+        time.sleep(0.025) # Delay for ~40 Hz loop frequency (faster than the sending frequency)
+ 
 @app.route("/")   
 @app.route("/index")
 def index():
     try:
-        thread = Thread(target = video_thread)
-        thread.start()
+        thread_video = Thread(target = video_thread)
+        thread_video.start()
+        thread_serial = Thread(target = serial_thread)
+        thread_serial.start()
         return render_template("index.html") 
     except Exception as e:
         return render_template("500.html", error = str(e))
@@ -88,8 +104,10 @@ def index():
 @app.route("/phone")
 def phone():
     try:
-        thread = Thread(target = video_thread)
-        thread.start()
+        thread_video = Thread(target = video_thread)
+        thread_video.start()
+        thread_serial = Thread(target = serial_thread)
+        thread_serial.start()
         return render_template("phone.html") 
     except Exception as e:
         return render_template("500.html", error = str(e))        

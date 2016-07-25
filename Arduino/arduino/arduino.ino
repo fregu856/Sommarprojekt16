@@ -35,7 +35,7 @@ int Kp = 4;
 int Kd = 350;
 
 int manual_state = stop_int;
-int mode = auto_int;
+int mode = manual_int;
 STATE AUTO_STATE = CORRIDOR; // current auto state is "CORRIDOR" per default
 
 #define CORRIDOR_SIDE_DISTANCE 20 // Distance for determining whether in corridor or not
@@ -794,20 +794,69 @@ void run_state()
 	}
 }
 
-void test()
+float restrict_to_unsigned_size(float value)
 {
-    //Serial.println(IR_distance[0]);
-    //Serial.println(IR_Yaw_left);
-    //Serial.println(IR_Yaw_right);
-    //Serial.println(alpha);
-    //Serial.println("******");
-    //Serial.println("*******");
-    Serial.println(AUTO_STATE);
-    //Serial.println(IR_distance[0]);
-    //Serial.println(IR_distance[1]);
-    //Serial.println(IR_distance[2]);
-    //Serial.println(IR_distance[3]);
-    //Serial.println(IR_distance[4]);
+    if (value > 255)
+    {
+        return 255;
+    }
+    
+    else
+    {
+        return value;
+    }
+}
+
+float restrict_to_signed_size(float value)
+{
+    if (value > 127)
+    {
+        return 127;
+    }
+    
+    else if (value < -128)
+    {
+        return -128;
+    }
+    
+    else
+    {
+        return value;
+    }
+}
+
+void send_serial()
+{  
+    // restrict data to be sent and convert to one byte: (restrict to 0 - 255 or -128 - 127)
+    uint8_t IR_0_byte = restrict_to_unsigned_size(IR_distance[0]);
+    uint8_t IR_1_byte = restrict_to_unsigned_size(IR_distance[1]);
+    uint8_t IR_2_byte = restrict_to_unsigned_size(IR_distance[2]);
+    uint8_t IR_3_byte = restrict_to_unsigned_size(IR_distance[3]);
+    uint8_t IR_4_byte = restrict_to_unsigned_size(IR_distance[4]);
+    int8_t IR_Yaw_right_byte = restrict_to_signed_size(IR_Yaw_right);
+    int8_t IR_Yaw_left_byte = restrict_to_signed_size(IR_Yaw_left);
+    int8_t Yaw_byte = restrict_to_signed_size(Yaw);
+    int8_t p_part_byte = restrict_to_signed_size(p_part);
+    int8_t alpha_byte = restrict_to_signed_size(alpha);
+    
+    // indicate start of transmission:
+    Serial.write(100);
+    
+    // send all data:
+    Serial.write(IR_0_byte);
+    /*Serial.write(IR_1_byte);
+    Serial.write(IR_2_byte);
+    Serial.write(IR_3_byte);
+    Serial.write(IR_4_byte);
+    Serial.write(IR_Yaw_right_byte);
+    Serial.write(IR_Yaw_left_byte);
+    Serial.write(Yaw_byte);
+    Serial.write(p_part_byte);
+    Serial.write(alpha_byte);
+    Serial.write(AUTO_STATE);*/
+    
+    // indicate end of transmission:
+    Serial.write(200);
 }
 
 void setup()
@@ -824,15 +873,13 @@ void setup()
 
 void loop()
 {  
-    //read_serial();
+    read_serial();
     read_IR_sensors();
     filter_IR_values();
     convert_IR_values();
     calculate_Yaw();
     calculate_p_part();
     calculate_alpha();
-    
-    test();
     
     if (startup_counter < 40) // wait approx 2 secs
     {
@@ -849,6 +896,8 @@ void loop()
         update_state();
         run_state();
     }
+    
+    send_serial();
     
     delay(50);  // delay for loop frequency of roughly 20 Hz
 }
