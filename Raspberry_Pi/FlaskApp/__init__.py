@@ -15,6 +15,18 @@ import time
 
 from threading import Thread
 
+IR_0 = 0
+IR_1 = 0
+IR_2 = 0
+IR_3 = 0
+IR_4 = 0
+IR_Yaw_right = 0
+IR_Yaw_left = 0
+Yaw = 0
+p_part = 0
+alpha = 0
+AUTO_STATE = 0
+
 # stop = 0
 # forward = 1
 # backward = 2
@@ -68,7 +80,7 @@ def video_thread():
         image = frame.array
         
         cv2.imwrite("/var/www/FlaskApp/FlaskApp/static/images/image.jpg", image)
-        socketio.emit("video_test", {"data": "Test"})
+        socketio.emit("video_test", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "AUTO_STATE": AUTO_STATE})
      
         # clear the stream in preparation for the next frame
         rawCapture.truncate(0)
@@ -76,17 +88,45 @@ def video_thread():
         time.sleep(0.1) # Delay 0.1 sec (~ 0 Hz)
         
 def serial_thread():
-    for index in range(10000):
+    # all global variables this function can modify:
+    global IR_0, IR_1, IR_2, IR_3, IR_4, IR_Yaw_right, IR_Yaw_left, Yaw, p_part, alpha, AUTO_STATE
+
+    while 1:
         no_bytes_waiting = serial_port.inWaiting()
-        if no_bytes_waiting > 3: # the ardu sends 3 bytes at the time
-            start_byte = serial_port.read(size = 1) # read first byte (read 1 byte)
-            start_byte = ord(start_byte)
-            print(start_byte)
-            print(start_byte)
-            print(start_byte)
-            print(start_byte)
-            print(start_byte)
-            print(start_byte)
+        if no_bytes_waiting > 13: # the ardu sends 13 bytes at the time (11 data, 2 control)
+            # read the first byte (read 1 byte): (ord: gives the actual value of the byte)
+            first_byte = ord(serial_port.read(size = 1)) 
+            
+            # read all data bytes if first byte was the start byte:
+            if first_byte == 100:
+                serial_data = []
+                # read all data bytes:
+                for counter in range(11): # 11 data bytes is sent from the ardu
+                    serial_data.append(ord(serial_port.read(size = 1)))
+                # read last byte:
+                last_byte = ord(serial_port.read(size = 1)) 
+                
+                # update the variables with the read serial data only if the last byte was the end byte:
+                if last_byte == 200:
+                    IR_0 = serial_data[0]
+                    IR_1 = serial_data[1]
+                    IR_2 = serial_data[2]
+                    IR_3 = serial_data[3]
+                    IR_4 = serial_data[4]
+                    IR_Yaw_right = serial_data[5]
+                    IR_Yaw_left = serial_data[6]
+                    Yaw = serial_data[7]
+                    p_part = serial_data[8]
+                    alpha = serial_data[9]
+                    AUTO_STATE = serial_data[10]
+                else: # if final byte doesn't match: something weird has happened during transmission: flush input buffer and start over
+                    serial_port.flushInput()
+                    print("Something went wrong in the transaction: final byte didn't match!")                  
+            else: # if first byte isn't the start byte: we're not in sync: just read the next byte until we get in sync (until we reach the start byte)
+                pass
+        else: # if not enough bytes for entire transmission, just wait for more data:
+            pass
+
         time.sleep(0.025) # Delay for ~40 Hz loop frequency (faster than the sending frequency)
  
 @app.route("/")   
@@ -120,73 +160,17 @@ def handle_my_custom_event(sent_dict):
 def handle_button_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
     serial_port.write(sent_dict["data"] + "\n") # "\n" is used as a delimiter char when the arduino reads the serial port
-    read_line = serial_port.readline()
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
+
 
 @socketio.on("touch_event")
 def handle_touch_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
     serial_port.write(sent_dict["data"] + "\n")
-    read_line = serial_port.readline()
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
 
 @socketio.on("key_event")
 def handle_key_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
     serial_port.write(sent_dict["data"] + "\n")
-    read_line = serial_port.readline()
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
-    print(read_line)
     
 @socketio.on("parameters_event")
 def handle_parameters_event(sent_dict):
@@ -202,69 +186,14 @@ def handle_parameters_event(sent_dict):
     if (Kp_input or Kp_input == 0) and (Kd_input or Kd_input == 0): # if valid, non-empty input for both Kp and Kd: send both Kp and Kd
         serial_port.write("7" + "\n" + str(Kp_input) + "\n" + str(Kd_input) + "\n")
         print("New Kp and Kd sent!")
-        read_line = serial_port.readline()
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
+
     elif Kp_input or Kp_input == 0: # if only Kp:
         serial_port.write("8" + "\n" + str(Kp_input) + "\n") # 8 = Just Kp
         print("New Kp sent!")
-        read_line = serial_port.readline()
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
+
     elif Kd_input or Kd_input == 0: # if only Kd:
         serial_port.write("9" + "\n" + str(Kd_input) + "\n") # 9 = Just Kd
         print("New Kd sent!")
-        read_line = serial_port.readline()
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
-        print(read_line)
         
 @app.errorhandler(404)
 def page_not_found(e):

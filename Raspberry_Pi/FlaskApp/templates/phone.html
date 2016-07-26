@@ -71,6 +71,29 @@
             <br />
             
             <button type="button" id="parameters_button_ph" class="btn btn-default" style="width: 150px; height: 40px">Send parameters</button>    
+            </br>
+            
+            <p>IR_0: <p id="IR_0_ph"></p> </p>
+            </br>
+            <p>IR_1: <p id="IR_1_ph"></p> </p>
+            </br>
+            <p>IR_2: <p id="IR_2_ph"></p> </p>
+            </br>
+            <p>IR_3: <p id="IR_3_ph"></p> </p>
+            </br>
+            <p>IR_4: <p id="IR_4_ph"></p> </p>
+            </br>
+            <p>IR_Yaw_right: <p id="IR_Yaw_right_ph"></p> </p>
+            </br>
+            <p>IR_Yaw_left: <p id="IR_Yaw_left_ph"></p> </p>
+            </br>
+            <p>Yaw: <p id="Yaw_ph"></p> </p>
+            </br>
+            <p>p_part: <p id="p_part_ph"></p> </p>
+            </br>
+            <p>alpha: <p id="alpha_ph"></p> </p>
+            </br>
+            <p>AUTO_STATE: <p id="AUTO_STATE_ph"></p> </p>
             
         </div> 
     </div>
@@ -149,6 +172,18 @@
         function video_handler(sent_dict)
         {
             document.getElementById("video_frame_ph").src = "static/images/image.jpg?" + new Date().getTime(); // Break the cache (so it actually gets the updated image, and don't use the one stored in cache)
+        
+            document.getElementById("IR_0_ph").innerHTML = sent_dict["IR_0"];
+            document.getElementById("IR_1_ph").innerHTML = sent_dict["IR_1"];
+            document.getElementById("IR_2_ph").innerHTML = sent_dict["IR_2"];
+            document.getElementById("IR_3_ph").innerHTML = sent_dict["IR_3"];
+            document.getElementById("IR_4_ph").innerHTML = sent_dict["IR_4"];
+            document.getElementById("IR_Yaw_right_ph").innerHTML = sent_dict["IR_Yaw_right"];
+            document.getElementById("IR_Yaw_left_ph").innerHTML = sent_dict["IR_Yaw_left"];
+            document.getElementById("Yaw_ph").innerHTML = sent_dict["Yaw"];
+            document.getElementById("p_part_ph").innerHTML = sent_dict["p_part"];
+            document.getElementById("alpha_ph").innerHTML = sent_dict["alpha"];
+            document.getElementById("AUTO_STATE_ph").innerHTML = sent_dict["AUTO_STATE"];
         }
         
         var socket = io.connect('http://' + document.domain + ':' + location.port);

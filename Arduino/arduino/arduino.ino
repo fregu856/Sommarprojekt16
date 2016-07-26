@@ -263,7 +263,7 @@ void read_serial()
         char input_buffer[8];
         Serial.readBytesUntil('\n', input_buffer, 8); // read bytes until reach "\n"-char ('\n' are used as delimiter)
         int serial_input = atoi(input_buffer); // convert the read bytes (chars) to the corresponding integer
-        Serial.println(serial_input);
+        //Serial.println(serial_input);
         
         // if in manual mode:
         if (mode == manual_int)
@@ -844,7 +844,7 @@ void send_serial()
     
     // send all data:
     Serial.write(IR_0_byte);
-    /*Serial.write(IR_1_byte);
+    Serial.write(IR_1_byte);
     Serial.write(IR_2_byte);
     Serial.write(IR_3_byte);
     Serial.write(IR_4_byte);
@@ -853,7 +853,7 @@ void send_serial()
     Serial.write(Yaw_byte);
     Serial.write(p_part_byte);
     Serial.write(alpha_byte);
-    Serial.write(AUTO_STATE);*/
+    Serial.write(AUTO_STATE);
     
     // indicate end of transmission:
     Serial.write(200);
