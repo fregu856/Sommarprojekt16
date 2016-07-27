@@ -75,6 +75,14 @@
             </br>
             </br>
             
+            <div id="container_IR_0" style="height: 300px; width:100%">
+            </div>
+            </br>
+            
+            <div id="container_IR_1" style="height: 300px; width:100%">
+            </div>
+            </br>
+            
             <p>IR_0: <p id="IR_0"></p> </p>
             </br>
             <p>IR_1: <p id="IR_1"></p> </p>
@@ -104,9 +112,57 @@
     <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/canvasjs.min.js') }}"></script>
+    
+    
     
     <script type="text/javascript" charset="utf-8">
         var previous_data = 0;
+        var IR_0_data = 0;
+        var IR_1_data = 0;
+        
+        window.onload = function () 
+        {
+            var updateInterval = 100;
+        
+            var dps_IR_0 = [];
+            var dps_IR_1 = [];
+            
+            var xval_IR_0 = 0;
+            var xval_IR_1 = 0;
+
+            var chart_IR_0 = new CanvasJS.Chart("container_IR_0", {title: {text: "IR_0"}, data: [{type: "line", dataPoints: dps_IR_0}]});
+            var chart_IR_1 = new CanvasJS.Chart("container_IR_1", {title: {text: "IR_1"}, data: [{type: "line", dataPoints: dps_IR_1}]});
+            
+            var update_chart_IR_0 = function () 
+            {   
+				dps_IR_0.push({x: xval_IR_0, y: IR_0_data});
+				xval_IR_0++;
+                if (dps_IR_0.length > 100)
+                {
+                    dps_IR_0.shift();				
+                }
+                chart_IR_0.render();		
+            };
+            var update_chart_IR_1 = function () 
+            {   
+				dps_IR_1.push({x: xval_IR_1, y: IR_1_data});
+				xval_IR_1++;
+                if (dps_IR_1.length > 100)
+                {
+                    dps_IR_1.shift();				
+                }
+                chart_IR_1.render();		
+            };
+
+            // generates first set of dataPoints
+            update_chart_IR_0(); 
+            update_chart_IR_1(); 
+
+            // update chart after specified time. 
+            setInterval(update_chart_IR_0, updateInterval); 
+            setInterval(update_chart_IR_1, updateInterval); 
+        }
         
         function connect_handler()
         {
@@ -262,7 +318,9 @@
             document.getElementById("video_frame").src = "static/images/image.jpg?" + new Date().getTime(); // Break the cache (so it actually gets the updated image, and don't use the one stored in cache)
             
             document.getElementById("IR_0").innerHTML = sent_dict["IR_0"];
+            IR_0_data = sent_dict["IR_0"];
             document.getElementById("IR_1").innerHTML = sent_dict["IR_1"];
+            IR_1_data = sent_dict["IR_1"];
             document.getElementById("IR_2").innerHTML = sent_dict["IR_2"];
             document.getElementById("IR_3").innerHTML = sent_dict["IR_3"];
             document.getElementById("IR_4").innerHTML = sent_dict["IR_4"];
