@@ -259,7 +259,7 @@ void read_serial()
     // (I found that "while" works better than "if", with "while" we always empty the input buffer)
     while (Serial.available())
     {
-        // Read the serial input: (a maximum of 8 bytes)
+        // Read the serial input: (a maximum of 8 bytes = 8 chars (letters/digits))
         char input_buffer[8];
         Serial.readBytesUntil('\n', input_buffer, 8); // read bytes until reach "\n"-char ('\n' are used as delimiter)
         int serial_input = atoi(input_buffer); // convert the read bytes (chars) to the corresponding integer
@@ -837,7 +837,13 @@ void send_serial()
     int8_t IR_Yaw_left_byte = restrict_to_signed_size(IR_Yaw_left);
     int8_t Yaw_byte = restrict_to_signed_size(Yaw);
     int8_t p_part_byte = restrict_to_signed_size(p_part);
-    int8_t alpha_byte = restrict_to_signed_size(alpha);
+    int16_t alpha_two_byte = alpha; // (don't have to restrict it to fit 16 bits)
+    int8_t alpha_low_byte = (alpha_two_byte & 0x00FF); // get the low byte and treat is as an int8_t (yes, it should be this way, test it with pen and paper and some simple example)
+    int8_t alpha_high_byte = (alpha_two_byte & 0xFF00)/256; // get the high byte and treat is as an int8_t
+    uint8_t Kp_byte = restrict_to_unsigned_size(Kp);
+    uint16_t Kd_two_byte = Kd; // (you don't have to restrict it to fit 16 bits since it can represent such big numbers)
+    uint8_t Kd_low_byte = (Kd_two_byte & 0x00FF); // Get the low byte by bitwise AND with 0000 0000 1111 1111
+    uint8_t Kd_high_byte = (Kd_two_byte & 0xFF00)/256; // Get the high byte by bitwise AND with 1111 1111 0000 0000 and 8 bit right shift (division by 256)
     
     // indicate start of transmission:
     Serial.write(100);
@@ -852,8 +858,14 @@ void send_serial()
     Serial.write(IR_Yaw_left_byte);
     Serial.write(Yaw_byte);
     Serial.write(p_part_byte);
-    Serial.write(alpha_byte);
+    Serial.write(alpha_low_byte);
+    Serial.write(alpha_high_byte);
+    Serial.write(Kp_byte);
+    Serial.write(Kd_low_byte);
+    Serial.write(Kd_high_byte);
     Serial.write(AUTO_STATE);
+    Serial.write(manual_state);
+    Serial.write(mode);
     
     // indicate end of transmission:
     Serial.write(200);

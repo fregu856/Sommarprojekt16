@@ -20,7 +20,7 @@
     
 <body>
     
-    <div class="container-fluid" style="min-height:100%; max-width: 1200px">
+    <div class="container-fluid" style="min-height:100%; max-width: 1500px">
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
@@ -75,35 +75,82 @@
             </br>
             </br>
             
-            <div id="container_IR_0" style="height: 300px; width:100%">
+            <div class="row">
+                <div class="col-md-4"> <!-- md: three cols for desktop, collapse to one col for tabled and phone  -->
+                    <div id="container_IR_0" style="height: 300px; width:100%">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div id="container_IR_1" style="height: 300px; width:100%">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div id="container_IR_2" style="height: 300px; width:100%">
+                    </div>
+                </div>
             </div>
-            </br>
+            <br />
             
-            <div id="container_IR_1" style="height: 300px; width:100%">
+            <div class="row">
+                <div class="col-md-4">
+                    <div id="container_IR_3" style="height: 300px; width:100%">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div id="container_IR_4" style="height: 300px; width:100%">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div id="container_IR_Yaw_left" style="height: 300px; width:100%">
+                    </div>
+                </div>
+                
             </div>
-            </br>
+            <br />
             
-            <p>IR_0: <p id="IR_0"></p> </p>
-            </br>
-            <p>IR_1: <p id="IR_1"></p> </p>
-            </br>
-            <p>IR_2: <p id="IR_2"></p> </p>
-            </br>
-            <p>IR_3: <p id="IR_3"></p> </p>
-            </br>
-            <p>IR_4: <p id="IR_4"></p> </p>
-            </br>
-            <p>IR_Yaw_right: <p id="IR_Yaw_right"></p> </p>
-            </br>
-            <p>IR_Yaw_left: <p id="IR_Yaw_left"></p> </p>
-            </br>
-            <p>Yaw: <p id="Yaw"></p> </p>
-            </br>
-            <p>p_part: <p id="p_part"></p> </p>
-            </br>
-            <p>alpha: <p id="alpha"></p> </p>
-            </br>
+            <div class="row">      
+                <div class="col-md-4">
+                    <div id="container_IR_Yaw_right" style="height: 300px; width:100%">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div id="container_Yaw" style="height: 300px; width:100%">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div id="container_p_part" style="height: 300px; width:100%">
+                    </div>
+                </div>
+                
+            </div>
+            <br />
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div id="container_alpha" style="height: 300px; width:100%">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                </div>
+                
+                <div class="col-md-4">
+                </div>
+                
+            </div>
+            <br />
+          
+            <p>Kp: <p id="Kp"></p> </p>
+            <p>Kd: <p id="Kd"></p> </p>
             <p>AUTO_STATE: <p id="AUTO_STATE"></p> </p>
+            <p>manual_state: <p id="manual_state"></p> </p>
+            <p>mode: <p id="mode"></p> </p>
             
         </div> 
     </div>
@@ -120,19 +167,51 @@
         var previous_data = 0;
         var IR_0_data = 0;
         var IR_1_data = 0;
+        var IR_2_data = 0;
+        var IR_3_data = 0;
+        var IR_4_data = 0;
+        var IR_Yaw_right_data = 0;
+        var IR_Yaw_left_data = 0;
+        var Yaw_data = 0;
+        var p_part_data = 0;
+        var alpha_data = 0;
         
         window.onload = function () 
         {
-            var updateInterval = 100;
+            var updateInterval = 100; // 10 Hz
         
             var dps_IR_0 = [];
             var dps_IR_1 = [];
+            var dps_IR_2 = [];
+            var dps_IR_3 = [];
+            var dps_IR_4 = [];
+            var dps_IR_Yaw_right = [];
+            var dps_IR_Yaw_left = [];
+            var dps_Yaw = [];
+            var dps_p_part = [];
+            var dps_alpha = [];
             
             var xval_IR_0 = 0;
             var xval_IR_1 = 0;
+            var xval_IR_2 = 0;
+            var xval_IR_3 = 0;
+            var xval_IR_4 = 0;
+            var xval_IR_Yaw_right = 0;
+            var xval_IR_Yaw_left = 0;
+            var xval_Yaw = 0;
+            var xval_p_part = 0;
+            var xval_alpha = 0;
 
             var chart_IR_0 = new CanvasJS.Chart("container_IR_0", {title: {text: "IR_0"}, data: [{type: "line", dataPoints: dps_IR_0}]});
             var chart_IR_1 = new CanvasJS.Chart("container_IR_1", {title: {text: "IR_1"}, data: [{type: "line", dataPoints: dps_IR_1}]});
+            var chart_IR_2 = new CanvasJS.Chart("container_IR_2", {title: {text: "IR_2"}, data: [{type: "line", dataPoints: dps_IR_2}]});
+            var chart_IR_3 = new CanvasJS.Chart("container_IR_3", {title: {text: "IR_3"}, data: [{type: "line", dataPoints: dps_IR_3}]});
+            var chart_IR_4 = new CanvasJS.Chart("container_IR_4", {title: {text: "IR_4"}, data: [{type: "line", dataPoints: dps_IR_4}]});
+            var chart_IR_Yaw_right = new CanvasJS.Chart("container_IR_Yaw_right", {title: {text: "IR_Yaw_right"}, data: [{type: "line", dataPoints: dps_IR_Yaw_right}]});
+            var chart_IR_Yaw_left = new CanvasJS.Chart("container_IR_Yaw_left", {title: {text: "IR_Yaw_left"}, data: [{type: "line", dataPoints: dps_IR_Yaw_left}]});
+            var chart_Yaw = new CanvasJS.Chart("container_Yaw", {title: {text: "Yaw"}, data: [{type: "line", dataPoints: dps_Yaw}]});
+            var chart_p_part = new CanvasJS.Chart("container_p_part", {title: {text: "p_part"}, data: [{type: "line", dataPoints: dps_p_part}]});
+            var chart_alpha = new CanvasJS.Chart("container_alpha", {title: {text: "alpha"}, data: [{type: "line", dataPoints: dps_alpha}]});
             
             var update_chart_IR_0 = function () 
             {   
@@ -140,7 +219,7 @@
 				xval_IR_0++;
                 if (dps_IR_0.length > 100)
                 {
-                    dps_IR_0.shift();				
+                    dps_IR_0.shift(); // remove the first element if the array has gotten to big				
                 }
                 chart_IR_0.render();		
             };
@@ -154,14 +233,111 @@
                 }
                 chart_IR_1.render();		
             };
+            var update_chart_IR_2 = function () 
+            {   
+				dps_IR_2.push({x: xval_IR_2, y: IR_2_data});
+				xval_IR_2++;
+                if (dps_IR_2.length > 100)
+                {
+                    dps_IR_2.shift();				
+                }
+                chart_IR_2.render();		
+            };
+            var update_chart_IR_3 = function () 
+            {   
+				dps_IR_3.push({x: xval_IR_3, y: IR_3_data});
+				xval_IR_3++;
+                if (dps_IR_3.length > 100)
+                {
+                    dps_IR_3.shift();				
+                }
+                chart_IR_3.render();		
+            };
+            var update_chart_IR_4 = function () 
+            {   
+				dps_IR_4.push({x: xval_IR_4, y: IR_4_data});
+				xval_IR_4++;
+                if (dps_IR_4.length > 100)
+                {
+                    dps_IR_4.shift();				
+                }
+                chart_IR_4.render();		
+            };
+            var update_chart_IR_Yaw_right = function () 
+            {   
+				dps_IR_Yaw_right.push({x: xval_IR_Yaw_right, y: IR_Yaw_right_data});
+				xval_IR_Yaw_right++;
+                if (dps_IR_Yaw_right.length > 100)
+                {
+                    dps_IR_Yaw_right.shift();				
+                }
+                chart_IR_Yaw_right.render();		
+            };
+            var update_chart_IR_Yaw_left = function () 
+            {   
+				dps_IR_Yaw_left.push({x: xval_IR_Yaw_left, y: IR_Yaw_left_data});
+				xval_IR_Yaw_left++;
+                if (dps_IR_Yaw_left.length > 100)
+                {
+                    dps_IR_Yaw_left.shift();				
+                }
+                chart_IR_Yaw_left.render();		
+            };
+            var update_chart_Yaw = function () 
+            {   
+				dps_Yaw.push({x: xval_Yaw, y: Yaw_data});
+				xval_Yaw++;
+                if (dps_Yaw.length > 100)
+                {
+                    dps_Yaw.shift();				
+                }
+                chart_Yaw.render();		
+            };
+            var update_chart_p_part = function () 
+            {   
+				dps_p_part.push({x: xval_p_part, y: p_part_data});
+				xval_p_part++;
+                if (dps_p_part.length > 100)
+                {
+                    dps_p_part.shift();				
+                }
+                chart_p_part.render();		
+            };
+            var update_chart_alpha = function () 
+            {   
+				dps_alpha.push({x: xval_alpha, y: alpha_data});
+				xval_alpha++;
+                if (dps_alpha.length > 100)
+                {
+                    dps_alpha.shift();				
+                }
+                chart_alpha.render();		
+            };
 
             // generates first set of dataPoints
             update_chart_IR_0(); 
             update_chart_IR_1(); 
+            update_chart_IR_2();
+            update_chart_IR_3();
+            update_chart_IR_4();
+            update_chart_IR_Yaw_right();
+            update_chart_IR_Yaw_left();
+            update_chart_Yaw();
+            update_chart_p_part();
+            update_chart_alpha();
+
 
             // update chart after specified time. 
             setInterval(update_chart_IR_0, updateInterval); 
-            setInterval(update_chart_IR_1, updateInterval); 
+            setInterval(update_chart_IR_1, updateInterval);
+            setInterval(update_chart_IR_2, updateInterval); 
+            setInterval(update_chart_IR_3, updateInterval);
+            setInterval(update_chart_IR_4, updateInterval);
+            setInterval(update_chart_IR_Yaw_right, updateInterval);
+            setInterval(update_chart_IR_Yaw_left, updateInterval);
+            setInterval(update_chart_Yaw, updateInterval);
+            setInterval(update_chart_p_part, updateInterval);
+            setInterval(update_chart_alpha, updateInterval);                
         }
         
         function connect_handler()
@@ -317,19 +493,22 @@
         {
             document.getElementById("video_frame").src = "static/images/image.jpg?" + new Date().getTime(); // Break the cache (so it actually gets the updated image, and don't use the one stored in cache)
             
-            document.getElementById("IR_0").innerHTML = sent_dict["IR_0"];
             IR_0_data = sent_dict["IR_0"];
-            document.getElementById("IR_1").innerHTML = sent_dict["IR_1"];
             IR_1_data = sent_dict["IR_1"];
-            document.getElementById("IR_2").innerHTML = sent_dict["IR_2"];
-            document.getElementById("IR_3").innerHTML = sent_dict["IR_3"];
-            document.getElementById("IR_4").innerHTML = sent_dict["IR_4"];
-            document.getElementById("IR_Yaw_right").innerHTML = sent_dict["IR_Yaw_right"];
-            document.getElementById("IR_Yaw_left").innerHTML = sent_dict["IR_Yaw_left"];
-            document.getElementById("Yaw").innerHTML = sent_dict["Yaw"];
-            document.getElementById("p_part").innerHTML = sent_dict["p_part"];
-            document.getElementById("alpha").innerHTML = sent_dict["alpha"];
+            IR_2_data = sent_dict["IR_2"];
+            IR_3_data = sent_dict["IR_3"];
+            IR_4_data = sent_dict["IR_4"];
+            IR_Yaw_right_data = sent_dict["IR_Yaw_right"];
+            IR_Yaw_left_data = sent_dict["IR_Yaw_left"];
+            Yaw_data = sent_dict["Yaw"];
+            p_part_data = sent_dict["p_part"];
+            alpha_data = sent_dict["alpha"];
+
+            document.getElementById("Kp").innerHTML = sent_dict["Kp"];
+            document.getElementById("Kd").innerHTML = sent_dict["Kd"];
             document.getElementById("AUTO_STATE").innerHTML = sent_dict["AUTO_STATE"];
+            document.getElementById("manual_state").innerHTML = sent_dict["manual_state"];
+            document.getElementById("mode").innerHTML = sent_dict["mode"];
         }
 
         var socket = io.connect('http://' + document.domain + ':' + location.port);

@@ -25,7 +25,50 @@ IR_Yaw_left = 0
 Yaw = 0
 p_part = 0
 alpha = 0
+Kp = 0
+Kd = 0
 AUTO_STATE = 0
+manual_state = 0
+mode = 0
+
+# dictionary for converting serial incoming data regarding the current manual state:
+manual_states = {
+    0: "Stop",
+    1: "Forward",
+    2: "Backward",
+    3: "Right",
+    4: "Left"
+}
+
+# dictionary for converting serial incoming data regarding the current auto state:
+auto_states = {
+    1: "DEAD_END",
+    2: "CORRIDOR",
+    3: "OUT_OF_CORRIDOR",
+    4: "INTO_JUNCTION",
+    5: "DETERMINE_JUNCTION",
+    6: "JUNCTION_A_R",
+    7: "JUNCTION_A_L",
+    8: "JUNCTION_B_R",
+    9: "JUNCTION_B_L",
+    10: "JUNCTION_C",
+    11: "JUNCTION_D",
+    12: "OUT_OF_JUNCTION",
+    13: 13,
+    14: 14,
+    15: 15,
+    16: 16,
+    17: 17,
+    18: 18,
+    19: 19,
+    20: 20
+}
+
+# dictionary for converting serial incoming data regarding the current mode:
+mode_states = {
+    5: "Manual",
+    6: "Auto"
+}
 
 # stop = 0
 # forward = 1
@@ -80,7 +123,7 @@ def video_thread():
         image = frame.array
         
         cv2.imwrite("/var/www/FlaskApp/FlaskApp/static/images/image.jpg", image)
-        socketio.emit("video_test", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "AUTO_STATE": AUTO_STATE})
+        socketio.emit("video_test", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "Kp": Kp, "Kd": Kd, "AUTO_STATE": AUTO_STATE, "manual_state": manual_state, "mode": mode})
      
         # clear the stream in preparation for the next frame
         rawCapture.truncate(0)
@@ -89,11 +132,11 @@ def video_thread():
         
 def serial_thread():
     # all global variables this function can modify:
-    global IR_0, IR_1, IR_2, IR_3, IR_4, IR_Yaw_right, IR_Yaw_left, Yaw, p_part, alpha, AUTO_STATE
+    global IR_0, IR_1, IR_2, IR_3, IR_4, IR_Yaw_right, IR_Yaw_left, Yaw, p_part, alpha, Kp, Kd, AUTO_STATE, manual_state, mode
 
     while 1:
         no_bytes_waiting = serial_port.inWaiting()
-        if no_bytes_waiting > 13: # the ardu sends 13 bytes at the time (11 data, 2 control)
+        if no_bytes_waiting > 19: # the ardu sends 19 bytes at the time (17 data, 2 control)
             # read the first byte (read 1 byte): (ord: gives the actual value of the byte)
             first_byte = ord(serial_port.read(size = 1)) 
             
@@ -101,7 +144,7 @@ def serial_thread():
             if first_byte == 100:
                 serial_data = []
                 # read all data bytes:
-                for counter in range(11): # 11 data bytes is sent from the ardu
+                for counter in range(17): # 17 data bytes is sent from the ardu
                     serial_data.append(ord(serial_port.read(size = 1)))
                 # read last byte:
                 last_byte = ord(serial_port.read(size = 1)) 
@@ -113,12 +156,20 @@ def serial_thread():
                     IR_2 = serial_data[2]
                     IR_3 = serial_data[3]
                     IR_4 = serial_data[4]
-                    IR_Yaw_right = serial_data[5]
-                    IR_Yaw_left = serial_data[6]
-                    Yaw = serial_data[7]
-                    p_part = serial_data[8]
-                    alpha = serial_data[9]
-                    AUTO_STATE = serial_data[10]
+                    IR_Yaw_right = int(np.int8(serial_data[5])) # IR_Yaw_right was sent as an int8_t, but in order to make python treat it as one we first need to tell it so explicitly with the help of numpy, before converting the result (a number between -128 and +127) to the corresponding python int 
+                    IR_Yaw_left = int(np.int8(serial_data[6]))
+                    Yaw = int(np.int8(serial_data[7]))
+                    p_part = int(np.int8(serial_data[8]))
+                    alpha_low_byte = int(np.int8(serial_data[9]))
+                    alpha_high_byte = int(np.int8(serial_data[10])) # yes, we need to first treat both the low and high bytes as int8:s, try it by hand and a simple example
+                    alpha = alpha_low_byte + alpha_high_byte*256 # (mult with 256 corresponds to a 8 bit left shift)
+                    Kp = serial_data[11]
+                    Kd_low_byte = serial_data[12]
+                    Kd_high_byte = serial_data[13]
+                    Kd = Kd_low_byte + Kd_high_byte*256
+                    AUTO_STATE = auto_states[serial_data[14]] # look up the received integer in the auto_states dict
+                    manual_state = manual_states[serial_data[15]]
+                    mode = mode_states[serial_data[16]]
                 else: # if final byte doesn't match: something weird has happened during transmission: flush input buffer and start over
                     serial_port.flushInput()
                     print("Something went wrong in the transaction: final byte didn't match!")                  
