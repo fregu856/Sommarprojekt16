@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, Response
 from dbconnect import connect
 import gc   # Garbage collection
 from datetime import date
@@ -105,30 +105,10 @@ def check_parameter_input(value):
     else: # if value == 0 or value is empty (if the parameter field was left empty)
         return value
 
-def video_thread():
-    camera = PiCamera()
-    camera.hflip = True # | Rotate 180 deg if mounted upside down
-    camera.vflip = True # |
-    camera.resolution = (640, 480)
-    camera.framerate = 32
-    rawCapture = PiRGBArray(camera, size=(640, 480))
-    print("Start") 
-    # allow the camera to warmup
-    time.sleep(0.1)
-    
-    # capture frames from the camera
-    for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-        # grab the raw NumPy array representing the image, then initialize the timestamp
-        # and occupied/unoccupied text
-        image = frame.array
-        
-        cv2.imwrite("/var/www/FlaskApp/FlaskApp/static/images/image.jpg", image)
-        socketio.emit("video_test", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "Kp": Kp, "Kd": Kd, "AUTO_STATE": AUTO_STATE, "manual_state": manual_state, "mode": mode})
-     
-        # clear the stream in preparation for the next frame
-        rawCapture.truncate(0)
-        
-        time.sleep(0.1) # Delay 0.1 sec (~ 0 Hz)
+def web_thread():
+    socketio.emit("video_test", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "Kp": Kp, "Kd": Kd, "AUTO_STATE": AUTO_STATE, "manual_state": manual_state, "mode": mode})
+    time.sleep(0.1) # Delay 0.1 sec (~ 10 Hz)
+    print(IR_0)
         
 def serial_thread():
     # all global variables this function can modify:
@@ -147,7 +127,7 @@ def serial_thread():
                 for counter in range(17): # 17 data bytes is sent from the ardu
                     serial_data.append(ord(serial_port.read(size = 1)))
                 # read last byte:
-                last_byte = ord(serial_port.read(size = 1)) 
+                last_byte = ord(serial_port.read(size = 1))
                 
                 # update the variables with the read serial data only if the last byte was the end byte:
                 if last_byte == 200:
@@ -180,12 +160,38 @@ def serial_thread():
 
         time.sleep(0.025) # Delay for ~40 Hz loop frequency (faster than the sending frequency)
  
+class Camera():
+    def __init__(self):
+        self.camera = PiCamera()
+        self.camera.hflip = True
+        self.camera.vflip = True
+        self.camera.resolution = (640, 480)
+        self.camera.framerate = 32
+        self.rawCapture = PiRGBArray(self.camera, size = (640, 480))
+        self.frame_stream = self.camera.capture_continuous(self.rawCapture, format = "bgr", use_video_port = True)
+        
+    def get_frame(self):
+        image = next(self.frame_stream).array
+        self.rawCapture.truncate(0)
+        ret, jpeg = cv2.imencode('.jpg', image)
+        return jpeg.tobytes()
+    
+def gen(camera_obj):
+    while 1:
+        frame = camera_obj.get_frame()
+        yield (b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                
+@app.route("/video_feed")
+def video_feed():
+    return Response(gen(Camera()), mimetype='multipart/x-mixed-replace; boundary=frame')
+ 
 @app.route("/")   
 @app.route("/index")
 def index():
     try:
-        thread_video = Thread(target = video_thread)
-        thread_video.start()
+        thread_web = Thread(target = web_thread)
+        thread_web.start()
         thread_serial = Thread(target = serial_thread)
         thread_serial.start()
         return render_template("index.html") 
