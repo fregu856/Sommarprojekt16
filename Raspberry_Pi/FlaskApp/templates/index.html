@@ -34,7 +34,16 @@
     
          <div style="text-align: center">
          
-             <img id="video_frame" src="{{ url_for('video_feed') }}" />
+            <div class="row">
+                <div class="col-md-6"> <!-- md: three cols for desktop, collapse to one col for tabled and phone  -->
+                    <img id="video_frame" src="{{ url_for('camera_normal') }}" />
+                </div>
+                
+                <div class="col-md-6">
+                    <img id="video_frame" src="{{ url_for('camera_mask') }}" />
+                </div>
+            </div>
+            <br />
              
              <br />
              <br />
@@ -489,10 +498,8 @@
             }                
         }
         
-        function video_handler(sent_dict)
-        {
-            document.getElementById("video_frame").src = "static/images/image.jpg?" + new Date().getTime(); // Break the cache (so it actually gets the updated image, and don't use the one stored in cache)
-            
+        function data_handler(sent_dict)
+        {       
             IR_0_data = sent_dict["IR_0"];
             IR_1_data = sent_dict["IR_1"];
             IR_2_data = sent_dict["IR_2"];
@@ -514,7 +521,7 @@
         var socket = io.connect('http://' + document.domain + ':' + location.port);
         socket.on('connect', connect_handler);
         
-        socket.on("video_test", video_handler);
+        socket.on("new_data", data_handler);
         
         // Buttons:
         document.getElementById("up_button").addEventListener("mousedown", up_button_press_handler);   

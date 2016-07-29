@@ -169,10 +169,8 @@
             socket.emit("parameters_event", {Kp: Kp_input, Kd: Kd_input});
         }
         
-        function video_handler(sent_dict)
+        function data_handler(sent_dict)
         {
-            document.getElementById("video_frame_ph").src = "static/images/image.jpg?" + new Date().getTime(); // Break the cache (so it actually gets the updated image, and don't use the one stored in cache)
-        
             document.getElementById("IR_0_ph").innerHTML = sent_dict["IR_0"];
             document.getElementById("IR_1_ph").innerHTML = sent_dict["IR_1"];
             document.getElementById("IR_2_ph").innerHTML = sent_dict["IR_2"];
@@ -189,7 +187,7 @@
         var socket = io.connect('http://' + document.domain + ':' + location.port);
         socket.on('connect', connect_handler);
         
-        socket.on("video_test", video_handler);
+        socket.on("new_data", data_handler);
         
         document.getElementById("up_button_ph").addEventListener("touchstart", up_button_press_handler_ph);   
         document.getElementById("up_button_ph").addEventListener("touchend", up_button_release_handler_ph);

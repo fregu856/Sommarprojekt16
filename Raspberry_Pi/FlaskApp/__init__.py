@@ -31,6 +31,8 @@ AUTO_STATE = 0
 manual_state = 0
 mode = 0
 
+latest_camera_frame = []
+
 # dictionary for converting serial incoming data regarding the current manual state:
 manual_states = {
     0: "Stop",
@@ -81,7 +83,6 @@ mode_states = {
 # Only Kp = 8
 # Only Kd = 9
 
-
 # 9600 is the baudrate, should match serial baudrate in arduino
 serial_port = serial.Serial("/dev/ttyACM0", 9600) 
 
@@ -104,11 +105,33 @@ def check_parameter_input(value):
             
     else: # if value == 0 or value is empty (if the parameter field was left empty)
         return value
+        
+def video_thread():
+    global latest_camera_frame
+    
+    camera = PiCamera()
+    camera.hflip = True # | Rotate 180 deg if mounted upside down
+    camera.vflip = True # |
+    camera.resolution = (640, 480)
+    camera.framerate = 32
+    rawCapture = PiRGBArray(camera, size=(640, 480))
+    video_stream = camera.capture_continuous(rawCapture, format="bgr", use_video_port=True)
+    # allow the camera to warmup:
+    time.sleep(0.1)
+    
+    # capture frames from the camera
+    while 1:
+        # grab the raw numpy array representing the image:
+        latest_camera_frame = next(video_stream).array 
+        # clear the stream in preparation for the next frame:
+        rawCapture.truncate(0)        
+        # Delay 0.05 sec (~ 20 Hz):
+        time.sleep(0.05) 
 
 def web_thread():
-    socketio.emit("video_test", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "Kp": Kp, "Kd": Kd, "AUTO_STATE": AUTO_STATE, "manual_state": manual_state, "mode": mode})
-    time.sleep(0.1) # Delay 0.1 sec (~ 10 Hz)
-    print(IR_0)
+    while 1:
+        socketio.emit("new_data", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "Kp": Kp, "Kd": Kd, "AUTO_STATE": AUTO_STATE, "manual_state": manual_state, "mode": mode})
+        time.sleep(0.1) # Delay 0.1 sec (~ 0 Hz)
         
 def serial_thread():
     # all global variables this function can modify:
@@ -127,7 +150,7 @@ def serial_thread():
                 for counter in range(17): # 17 data bytes is sent from the ardu
                     serial_data.append(ord(serial_port.read(size = 1)))
                 # read last byte:
-                last_byte = ord(serial_port.read(size = 1))
+                last_byte = ord(serial_port.read(size = 1)) 
                 
                 # update the variables with the read serial data only if the last byte was the end byte:
                 if last_byte == 200:
@@ -159,37 +182,42 @@ def serial_thread():
             pass
 
         time.sleep(0.025) # Delay for ~40 Hz loop frequency (faster than the sending frequency)
- 
-class Camera():
-    def __init__(self):
-        self.camera = PiCamera()
-        self.camera.hflip = True
-        self.camera.vflip = True
-        self.camera.resolution = (640, 480)
-        self.camera.framerate = 32
-        self.rawCapture = PiRGBArray(self.camera, size = (640, 480))
-        self.frame_stream = self.camera.capture_continuous(self.rawCapture, format = "bgr", use_video_port = True)
-        
-    def get_frame(self):
-        image = next(self.frame_stream).array
-        self.rawCapture.truncate(0)
-        ret, jpeg = cv2.imencode('.jpg', image)
-        return jpeg.tobytes()
     
-def gen(camera_obj):
+def gen_normal():
     while 1:
-        frame = camera_obj.get_frame()
-        yield (b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        if len(latest_camera_frame) > 0:
+            ret, jpg = cv2.imencode(".jpg", latest_camera_frame)
+            frame = jpg.tobytes()
+            yield (b'--frame\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
                 
-@app.route("/video_feed")
-def video_feed():
-    return Response(gen(Camera()), mimetype='multipart/x-mixed-replace; boundary=frame')
- 
+def gen_mask():
+    while 1:
+        if len(latest_camera_frame) > 0:
+            hsv = cv2.cvtColor(latest_camera_frame, cv2.COLOR_BGR2HSV)
+            lower_red = np.array([30, 150, 50])
+            upper_red = np.array([255, 255, 180])
+            range_mask = cv2.inRange(hsv, lower_red, upper_red)
+            
+            ret, jpg = cv2.imencode(".jpg", range_mask)
+            frame = jpg.tobytes()
+            yield (b'--frame\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                
+@app.route("/camera_normal")
+def camera_normal():
+    return Response(gen_normal(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    
+@app.route("/camera_mask")
+def camera_mask():
+    return Response(gen_mask(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    
 @app.route("/")   
 @app.route("/index")
 def index():
     try:
+        thread_video = Thread(target = video_thread)
+        thread_video.start()
         thread_web = Thread(target = web_thread)
         thread_web.start()
         thread_serial = Thread(target = serial_thread)
@@ -203,6 +231,8 @@ def phone():
     try:
         thread_video = Thread(target = video_thread)
         thread_video.start()
+        thread_web = Thread(target = web_thread)
+        thread_web.start()
         thread_serial = Thread(target = serial_thread)
         thread_serial.start()
         return render_template("phone.html") 
