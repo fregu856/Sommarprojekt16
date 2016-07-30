@@ -34,7 +34,7 @@
     
          <div style="text-align: center">
          
-            <img id="video_frame_ph" src="{{ url_for('video_feed') }}" style="width: 340px; height: 240px" />
+            <img id="video_frame_ph" src="/camera_normal" style="width: 340px; height: 240px" />
             <br />
             <br />
              
@@ -72,6 +72,7 @@
             
             <button type="button" id="parameters_button_ph" class="btn btn-default" style="width: 150px; height: 40px">Send parameters</button>    
             </br>
+            </br>
             
             <p>IR_0: <p id="IR_0_ph"></p> </p>
             </br>
@@ -93,7 +94,16 @@
             </br>
             <p>alpha: <p id="alpha_ph"></p> </p>
             </br>
+            <p>Kp: <p id="Kp_ph"></p> </p>
+            </br>
+            <p>Kd: <p id="Kd_ph"></p> </p>
+            </br>
             <p>AUTO_STATE: <p id="AUTO_STATE_ph"></p> </p>
+            </br>
+            <p>manual_state: <p id="manual_state_ph"></p> </p>
+            </br>
+            <p>mode: <p id="mode_ph"></p> </p>
+            </br>
             
         </div> 
     </div>
@@ -164,8 +174,6 @@
         {
             var Kp_input = document.getElementById("Kp_value_ph").value
             var Kd_input = document.getElementById("Kd_value_ph").value
-            console.log(Kp_input)
-            console.log(Kd_input)
             socket.emit("parameters_event", {Kp: Kp_input, Kd: Kd_input});
         }
         
@@ -181,7 +189,11 @@
             document.getElementById("Yaw_ph").innerHTML = sent_dict["Yaw"];
             document.getElementById("p_part_ph").innerHTML = sent_dict["p_part"];
             document.getElementById("alpha_ph").innerHTML = sent_dict["alpha"];
+            document.getElementById("Kp_ph").innerHTML = sent_dict["Kp"];
+            document.getElementById("Kd_ph").innerHTML = sent_dict["Kd"];
             document.getElementById("AUTO_STATE_ph").innerHTML = sent_dict["AUTO_STATE"];
+            document.getElementById("manual_state_ph").innerHTML = sent_dict["manual_state"];
+            document.getElementById("mode_ph").innerHTML = sent_dict["mode"];
         }
         
         var socket = io.connect('http://' + document.domain + ':' + location.port);
