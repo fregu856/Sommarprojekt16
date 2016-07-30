@@ -117,12 +117,12 @@ def video_thread():
     camera.vflip = True 
     
     # set resolution and frame rate:
-    camera.resolution = (640, 360)
+    camera.resolution = (640, 480)
     camera.framerate = 30
     
     # create a generator 'video_frame_generator' which will continuously capture video frames 
     # from the camera and save them one by one in the container 'generator_output': ('video_frame_generator' is an infinte iterator which on every iteration (every time 'next()' is called on it, like eg in a for loop) gets a video frame from the camera and saves it in 'generator_output'))  
-    generator_output = PiRGBArray(camera, size=(640, 360))
+    generator_output = PiRGBArray(camera, size=(640, 480))
     video_frame_generator = camera.capture_continuous(generator_output, format="bgr", use_video_port=True)
     
     # allow the camera to warmup:

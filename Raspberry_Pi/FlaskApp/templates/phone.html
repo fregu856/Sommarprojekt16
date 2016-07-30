@@ -1,26 +1,46 @@
 <!DOCTYPE>
 <hmtl>
 <head>
-    <title>Test-hemsida</title>
+    <title>Raspberino Control Center (phone)</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width-device-width, initial-scale=1" />
-    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" />
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/static/css/keen-dashboards.css" rel="stylesheet" />
 </head>
 
 <header>
-    <div class="navbar-header"> 
-    </div>
-    
-    <div class="container-fluid">    
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                
+                <a class="navbar-brand" href="/phone">
+                    <span class="glyphicon glyphicon-chevron-right"></span>
+                </a>
+                
+                <a class="navbar-brand" href="/phone">Raspberino Control Center</a>
+            </div>
+              
+            <div class="navbar-collapse collapse">
+                <ul class="nav navbar-nav navbar-left">
+                    <li><a href="/">Desktop</a></li>
+                </ul>
+            </div>
+        </div>
     </div>
 </header>
 
 <br />
 <br />
     
-<body>
+<body style="background: #f2f2f2">
     
-    <div class="container-fluid" style="min-height:100%; max-width: 1200px">
+    <div class="container-fluid">
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
@@ -31,81 +51,254 @@
                 {% endfor %}
            {% endif %}
         {% endwith %}
-    
-         <div style="text-align: center">
-         
-            <img id="video_frame_ph" src="/camera_normal" style="width: 340px; height: 240px" />
-            <br />
-            <br />
-             
-             <button type="button" id="up_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Up</button>
-             <br />
-             
-             <div class="btn-group" role="group">
-                <button type="button" id="left_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Left</button>
-                <button type="button" id="stop_button_ph" class="btn btn-danger" style="width: 90px; height: 40px">Stop</button>
-                <button type="button" id="right_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Right</button>
-            </div>
-            <br />
+        
+        </br>
+        </br>
+        
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="chart-wrapper">
+                    <div class="chart-title">
+                        Cell Title
+                    </div>
 
-            <button type="button" id="down_button_ph" class="btn btn-default" style="width: 90px; height: 40">Down</button>
-            <br />
-            <br />
-            
-            <div class="btn-group" role="group">
-                <button type="button" id="manual_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Manual</button>
-                <button type="button" id="auto_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Auto</button>
-            </div>
-            <br />
-            <br /> 
-  
-            <div class="row">
-                <div class="col-xs-6">
-                    <input type="text" class="form-control" placeholder="New Kp value" id="Kp_value_ph" />
-                </div>
-                
-                <div class="col-xs-6">
-                    <input type="text" class="form-control" placeholder="New Kd value" id="Kd_value_ph" />
+                    <div class="chart-stage">
+                        <img src="/camera_normal" style="width: 100%" />
+                    </div>
                 </div>
             </div>
-            <br />
+        </div>
             
-            <button type="button" id="parameters_button_ph" class="btn btn-default" style="width: 150px; height: 40px">Send parameters</button>    
-            </br>
-            </br>
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="chart-wrapper">
+                    <div class="chart-title">
+                        Cell Title
+                    </div>
+
+                    <div class="chart-stage" style="height: 300px; width:100%">
+                        <div style="text-align: center">
+                            </br>
+                            
+                            <button type="button" id="up_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Forward</button>
+                            
+                            <br />
+
+                            <div class="btn-group" role="group">
+                                <button type="button" id="left_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Left</button>
+                                <button type="button" id="stop_button_ph" class="btn btn-danger" style="width: 90px; height: 40px">Stop</button>
+                                <button type="button" id="right_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Right</button>
+                            </div>
+                            <br />
+
+                            <button type="button" id="down_button_ph" class="btn btn-default" style="width: 90px; height: 40">Backward</button>
+                            <br />
+                            <br />
+                            
+                            <div class="btn-group" role="group">
+                                <button type="button" id="manual_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Manual</button>
+                                <button type="button" id="auto_button_ph" class="btn btn-default" style="width: 90px; height: 40px">Auto</button>
+                            </div>
+                            </br>
+                            </br>
+                            
+                            <p>Current manual state: <span id="manual_state_ph"></span> </p>
+                            <p>Current mode: <span id="mode_ph"></span> </p> 
+                            
+                            <br />
+                        </div>
+                    </div>
+                    
+                    <div class="chart-notes">
+                        Notes about this chart
+                    </div>
+                </div>
+            </div>
+        </div>
             
-            <p>IR_0: <p id="IR_0_ph"></p> </p>
-            </br>
-            <p>IR_1: <p id="IR_1_ph"></p> </p>
-            </br>
-            <p>IR_2: <p id="IR_2_ph"></p> </p>
-            </br>
-            <p>IR_3: <p id="IR_3_ph"></p> </p>
-            </br>
-            <p>IR_4: <p id="IR_4_ph"></p> </p>
-            </br>
-            <p>IR_Yaw_right: <p id="IR_Yaw_right_ph"></p> </p>
-            </br>
-            <p>IR_Yaw_left: <p id="IR_Yaw_left_ph"></p> </p>
-            </br>
-            <p>Yaw: <p id="Yaw_ph"></p> </p>
-            </br>
-            <p>p_part: <p id="p_part_ph"></p> </p>
-            </br>
-            <p>alpha: <p id="alpha_ph"></p> </p>
-            </br>
-            <p>Kp: <p id="Kp_ph"></p> </p>
-            </br>
-            <p>Kd: <p id="Kd_ph"></p> </p>
-            </br>
-            <p>AUTO_STATE: <p id="AUTO_STATE_ph"></p> </p>
-            </br>
-            <p>manual_state: <p id="manual_state_ph"></p> </p>
-            </br>
-            <p>mode: <p id="mode_ph"></p> </p>
-            </br>
-            
-        </div> 
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="chart-wrapper">
+                    <div class="chart-title">
+                        Cell Title
+                    </div>
+
+                    <div class="chart-stage" style="height: 300px; width:100%">
+                        <div style="text-align: center"> 
+                            </br>
+                            
+                            <div class="row">
+                                <div class="col-xs-6">
+                                    <input type="text" class="form-control" placeholder="New Kp value" id="Kp_value_ph" />
+                                </div>
+                                
+                                <div class="col-xs-6">
+                                    <input type="text" class="form-control" placeholder="New Kd value" id="Kd_value_ph" />
+                                </div>
+                            </div>
+                            
+                            <br />
+                            
+                            <button type="button" id="parameters_button_ph" class="btn btn-default" style="width: 150px; height: 40px">Send parameters</button>          
+                            
+                            </br>
+                            </br>
+                            
+                            <p>Current Kp: <span id="Kp_ph"></span> </p>
+                            <p>Current Kd: <span id="Kd_ph"></span> </p> 
+                        </div>
+                    </div>
+                    
+                    <div class="chart-notes">
+                        Notes about this chart
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">    
+            <div class="col-xs-12">
+                <div class="chart-wrapper">
+                    <div class="chart-title">
+                        Cell Title
+                    </div>
+
+                    <div class="chart-stage" style="height: 300px; width:100%">
+                        <div class="row">
+                            <div class="col-xs-6">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>State</th>
+                                        </tr>
+                                    </thead>
+                                    
+                                    <tbody>
+                                        <tr>
+                                            <td>1</td>
+                                            <td id="state_table_1_ph"></td> 
+                                        </tr>
+                                        
+                                       <tr>
+                                            <td>2</td>
+                                            <td id="state_table_2_ph"></td> 
+                                        </tr>
+                                        
+                                       <tr>
+                                            <td>3</td>
+                                            <td id="state_table_3_ph"></td> 
+                                        </tr>
+                                        
+                                        <tr>
+                                            <td>4</td>
+                                            <td id="state_table_4_ph"></td> 
+                                        </tr>
+                                        
+                                        <tr>
+                                            <td>5</td>
+                                            <td id="state_table_5_ph"></td> 
+                                        </tr>
+                                        
+                                        <tr>
+                                            <td>6</td>
+                                            <td id="state_table_6_ph"></td> 
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="col-xs-6">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>State</th>
+                                        </tr>
+                                    </thead>
+                                    
+                                    <tbody>                                        
+                                       <tr>
+                                            <td>7</td>
+                                            <td id="state_table_7_ph"></td> 
+                                        </tr>
+                                        
+                                       <tr>
+                                            <td>8</td>
+                                            <td id="state_table_8_ph"></td> 
+                                        </tr>
+                                        
+                                        <tr>
+                                            <td>9</td>
+                                            <td id="state_table_9_ph"></td> 
+                                        </tr>
+                                        
+                                        <tr>
+                                            <td>10</td>
+                                            <td id="state_table_10_ph"></td> 
+                                        </tr>
+                                        
+                                        <tr>
+                                            <td>11</td>
+                                            <td id="state_table_11_ph"></td> 
+                                        </tr>
+                                        
+                                        <tr>
+                                            <td>12</td>
+                                            <td id="state_table_12_ph"></td> 
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-notes">
+                        Notes about this chart
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="chart-wrapper">
+                    <div class="chart-title">
+                        Cell Title
+                    </div>
+
+                    <div class="chart-stage">
+                        <div style="text-align: center">
+                            </br>
+                            <p>IR_0: <p id="IR_0_ph"></p> </p>
+                            </br>
+                            <p>IR_1: <p id="IR_1_ph"></p> </p>
+                            </br>
+                            <p>IR_2: <p id="IR_2_ph"></p> </p>
+                            </br>
+                            <p>IR_3: <p id="IR_3_ph"></p> </p>
+                            </br>
+                            <p>IR_4: <p id="IR_4_ph"></p> </p>
+                            </br>
+                            <p>IR_Yaw_right: <p id="IR_Yaw_right_ph"></p> </p>
+                            </br>
+                            <p>IR_Yaw_left: <p id="IR_Yaw_left_ph"></p> </p>
+                            </br>
+                            <p>Yaw: <p id="Yaw_ph"></p> </p>
+                            </br>
+                            <p>p_part: <p id="p_part_ph"></p> </p>
+                            </br>
+                            <p>alpha: <p id="alpha_ph"></p> </p>
+                            </br>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-notes">
+                        Notes about this chart
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <!-- Script (verkar spela roll i vilken ordning dessa placeras) -->
@@ -177,6 +370,17 @@
             socket.emit("parameters_event", {Kp: Kp_input, Kd: Kd_input});
         }
         
+        function insert_into_state_table_ph(new_state)
+        {
+            for (var i = 12; i > 1; --i)
+            {
+                var k = i - 1;
+                document.getElementById("state_table_" + i.toString() + "_ph").innerHTML = document.getElementById("state_table_" + k.toString() + "_ph").innerHTML;
+            }
+            
+            document.getElementById("state_table_1_ph").innerHTML = new_state;
+        }
+        
         function data_handler(sent_dict)
         {
             document.getElementById("IR_0_ph").innerHTML = sent_dict["IR_0"];
@@ -191,7 +395,14 @@
             document.getElementById("alpha_ph").innerHTML = sent_dict["alpha"];
             document.getElementById("Kp_ph").innerHTML = sent_dict["Kp"];
             document.getElementById("Kd_ph").innerHTML = sent_dict["Kd"];
-            document.getElementById("AUTO_STATE_ph").innerHTML = sent_dict["AUTO_STATE"];
+
+           stored_state = document.getElementById("state_table_1_ph").innerHTML;
+            new_state = sent_dict["AUTO_STATE"];
+            if (new_state != stored_state)
+            {
+                insert_into_state_table_ph(new_state);
+            }
+            
             document.getElementById("manual_state_ph").innerHTML = sent_dict["manual_state"];
             document.getElementById("mode_ph").innerHTML = sent_dict["mode"];
         }
