@@ -5,7 +5,6 @@ from datetime import date
 import numbers
 from flask_socketio import SocketIO, emit
 import serial
-
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 import time
@@ -31,7 +30,7 @@ AUTO_STATE = 0
 manual_state = 0
 mode = 0
 
-latest_camera_frame = []
+latest_video_frame = []
 
 # dictionary for converting serial incoming data regarding the current manual state:
 manual_states = {
@@ -107,39 +106,55 @@ def check_parameter_input(value):
         return value
         
 def video_thread():
-    global latest_camera_frame
+    # enable the thread to modify the global variable 'latest_video_frame': (this variable will be accessed by functions doing some sort of video analysis or video streaming)
+    global latest_video_frame   
     
-    camera = PiCamera()
-    camera.hflip = True # | Rotate 180 deg if mounted upside down
-    camera.vflip = True # |
+    # create an instance of the RPI camera class:
+    camera = PiCamera() 
+    
+    # rotate the camera view 180 deg (I have the RPI camera mounted upside down):
+    camera.hflip = True
+    camera.vflip = True 
+    
+    # set resolution and frame rate:
     camera.resolution = (640, 480)
-    camera.framerate = 32
-    rawCapture = PiRGBArray(camera, size=(640, 480))
-    video_stream = camera.capture_continuous(rawCapture, format="bgr", use_video_port=True)
+    camera.framerate = 30
+    
+    # create a generator 'video_frame_generator' which will continuously capture video frames 
+    # from the camera and save them one by one in the container 'generator_output': ('video_frame_generator' is an infinte iterator which on every iteration (every time 'next()' is called on it, like eg in a for loop) gets a video frame from the camera and saves it in 'generator_output'))  
+    generator_output = PiRGBArray(camera, size=(640, 480))
+    video_frame_generator = camera.capture_continuous(generator_output, format="bgr", use_video_port=True)
+    
     # allow the camera to warmup:
     time.sleep(0.1)
     
-    # capture frames from the camera
-    while 1:
-        # grab the raw numpy array representing the image:
-        latest_camera_frame = next(video_stream).array 
-        # clear the stream in preparation for the next frame:
-        rawCapture.truncate(0)        
-        # Delay 0.05 sec (~ 20 Hz):
-        time.sleep(0.05) 
+    for item in video_frame_generator:
+        # get the numpy array representing the latest captured video frame from the camera
+        # and save it globally for everyone to access:
+        latest_video_frame = generator_output.array 
+        
+        # clear the output container so it can store the next frame in the next loop cycle:
+        # (please note that this is absolutely necessary!)
+        generator_output.truncate(0)        
+        
+        # delay for 0.033 sec (for ~ 30 Hz loop frequency):
+        time.sleep(0.033) 
 
 def web_thread():
     while 1:
+        # send all data for display on the web page:
         socketio.emit("new_data", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "Kp": Kp, "Kd": Kd, "AUTO_STATE": AUTO_STATE, "manual_state": manual_state, "mode": mode})
-        time.sleep(0.1) # Delay 0.1 sec (~ 0 Hz)
+        
+        # delay for 0.1 sec (for ~ 10 Hz loop frequency):
+        time.sleep(0.1) 
         
 def serial_thread():
     # all global variables this function can modify:
     global IR_0, IR_1, IR_2, IR_3, IR_4, IR_Yaw_right, IR_Yaw_left, Yaw, p_part, alpha, Kp, Kd, AUTO_STATE, manual_state, mode
 
     while 1:
-        no_bytes_waiting = serial_port.inWaiting()
-        if no_bytes_waiting > 19: # the ardu sends 19 bytes at the time (17 data, 2 control)
+        no_of_bytes_waiting = serial_port.inWaiting()
+        if no_of_bytes_waiting > 19: # the ardu sends 19 bytes at the time (17 data, 2 control)
             # read the first byte (read 1 byte): (ord: gives the actual value of the byte)
             first_byte = ord(serial_port.read(size = 1)) 
             
@@ -185,41 +200,90 @@ def serial_thread():
     
 def gen_normal():
     while 1:
-        if len(latest_camera_frame) > 0:
-            ret, jpg = cv2.imencode(".jpg", latest_camera_frame)
+        if len(latest_video_frame) > 0: # if we have started receiving actual frames:
+            # convert the latest read video frame to jpg format:
+            ret, jpg = cv2.imencode(".jpg", latest_video_frame) 
+            
+            # get the raw data bytes of the jpg image: (convert to binary)
             frame = jpg.tobytes()
-            yield (b'--frame\r\n'
-                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            
+            # yield ('return') the frame: (yield: returns value and saves the current state of the generator function, the next time this generator function is called execution will resume on the next line of code in the function (ie it will in this example start a new cycle of the while loop and yield a new frame))
+            # what we yield looks like this, but in binary: (binary data is a must for multipart)
+            # --frame
+            # Content-Type: image/jpeg
+            #
+            # <frame data>
+            #
+            yield (b'--frame\nContent-Type: image/jpeg\n\n' + frame + b'\n')
                 
 def gen_mask():
     while 1:
-        if len(latest_camera_frame) > 0:
-            hsv = cv2.cvtColor(latest_camera_frame, cv2.COLOR_BGR2HSV)
+        if len(latest_video_frame) > 0: # if we have started receiving actual frames:
+            # convert the latest read video frame to HSV (Hue, Saturation, Value) format:
+            hsv = cv2.cvtColor(latest_video_frame, cv2.COLOR_BGR2HSV)
+            
+            # specify lower and upper 'redness' filter boundries:
             lower_red = np.array([30, 150, 50])
             upper_red = np.array([255, 255, 180])
+            
+            # mask the image according to the 'redness' filter: (pixels which are IN the 'redness' range specified above will be made white, pixels which are outside the 'redness' range (which aren't red enough) will be made black)
             range_mask = cv2.inRange(hsv, lower_red, upper_red)
             
+            # convert the result to jpg format:
             ret, jpg = cv2.imencode(".jpg", range_mask)
+            
+            # get the raw data bytes of the jpg image: (convert to binary)
             frame = jpg.tobytes()
-            yield (b'--frame\r\n'
-                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            
+            # yield the frame:
+            # what we yield looks like this, but in binary: (binary data is amust for multipart)
+            # --frame
+            # Content-Type: image/jpeg
+            #
+            # <frame data>
+            #
+            yield (b'--frame\nContent-Type: image/jpeg\n\n' + frame + b'\n')
                 
 @app.route("/camera_normal")
 def camera_normal():
-    return Response(gen_normal(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    # return a Respone object with a 'gen_normal()' generator function as its data generating iterator. We send a MIME multipart message of subtype Mixed-replace, which means that the browser will read data parts (generated by gen_obj_normal) one by one and immediately replace the previous one and display it. We never close the connection to the client, pretending like we haven't finished sending all the data, and constantly keeps sending new data parts generated by gen_obj_normal.
+    # what over time will be sent to the client is the following:
+    # Content-Type: multipart/x-mixed-replace; boundary=frame
+    #
+    # --frame
+    # Content-Type: image/jpeg
+    #
+    #<jpg data>
+    #
+    # --frame
+    # Content-Type: image/jpeg
+    #
+    #<jpg data>
+    #
+    # etc, etc
+    # where each '--frame' enclosed section represents a jpg image taken from the camera that the browser will read and display one by one, replacing the previous one, thus generating a video stream
+    gen_obj_normal = gen_normal()
+    return Response(gen_obj_normal, mimetype = "multipart/x-mixed-replace; boundary=frame")
     
 @app.route("/camera_mask")
 def camera_mask():
-    return Response(gen_mask(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    # return a Respone object with a 'gen_mask()' generator function as its data generating iterable, se "camera_normal"
+    gen_obj_mask = gen_mask()
+    return Response(gen_obj_mask, mimetype = "multipart/x-mixed-replace; boundary=frame")
     
 @app.route("/")   
 @app.route("/index")
 def index():
     try:
+        # start a thread constantly reading frames from the camera:
         thread_video = Thread(target = video_thread)
         thread_video.start()
+        
+        # start a thread constantly sending sensor/status data to the web page: 
         thread_web = Thread(target = web_thread)
         thread_web.start()
+        
+        # start a thread constantly reading sensor/status data from the arduino:
         thread_serial = Thread(target = serial_thread)
         thread_serial.start()
         return render_template("index.html") 
@@ -229,10 +293,15 @@ def index():
 @app.route("/phone")
 def phone():
     try:
+        # start a thread constantly reading frames from the camera:
         thread_video = Thread(target = video_thread)
         thread_video.start()
+        
+        # start a thread constantly sending sensor/status data to the web page: 
         thread_web = Thread(target = web_thread)
         thread_web.start()
+        
+        # start a thread constantly reading sensor/status data from the arduino:
         thread_serial = Thread(target = serial_thread)
         thread_serial.start()
         return render_template("phone.html") 
@@ -247,7 +316,6 @@ def handle_my_custom_event(sent_dict):
 def handle_button_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
     serial_port.write(sent_dict["data"] + "\n") # "\n" is used as a delimiter char when the arduino reads the serial port
-
 
 @socketio.on("touch_event")
 def handle_touch_event(sent_dict):
