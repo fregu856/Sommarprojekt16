@@ -650,46 +650,10 @@
             socket.emit('my event', {data: 'I\'m connected!'});
         }
         
-        // buttons:    
-        function up_button_press_handler() 
+        // buttons: 
+        function arrow_handler(arrow_data)
         {
-            socket.emit("button_event", {data: "1"});
-        }
-        function up_button_release_handler() 
-        {
-            socket.emit("button_event", {data: "0"});
-        }
-        
-        function down_button_press_handler() 
-        {
-            socket.emit("button_event", {data: "2"});
-        }
-        function down_button_release_handler() 
-        {
-           socket.emit("button_event", {data: "0"});
-        }
-        
-        function right_button_press_handler() 
-        {
-            socket.emit("button_event", {data: "3"});
-        }
-        function right_button_release_handler() 
-        {
-            socket.emit("button_event", {data: "0"});
-        }
-        
-        function left_button_press_handler() 
-        {
-            socket.emit("button_event", {data: "4"});
-        }
-        function left_button_release_handler() 
-        {
-            socket.emit("button_event", {data: "0"});
-        }
-        
-        function stop_button_press_handler() 
-        {
-            socket.emit("button_event", {data: "0"});
+            socket.emit("arrow_event", {data: arrow_data});
         }
         
         function manual_button_press_handler() 
@@ -838,18 +802,18 @@
         socket.on("new_data", data_handler);
         
         // Buttons: 
-        document.getElementById("up_button").addEventListener("mousedown", up_button_press_handler);   
-        document.getElementById("up_button").addEventListener("mouseup", up_button_release_handler);
-        document.getElementById("down_button").addEventListener("mousedown", down_button_press_handler);   
-        document.getElementById("down_button").addEventListener("mouseup", down_button_release_handler);  
+        document.getElementById("up_button").addEventListener("mousedown", arrow_handler(1));   
+        document.getElementById("up_button").addEventListener("mouseup", arrow_handler(0));
+        document.getElementById("down_button").addEventListener("mousedown", arrow_handler(2));   
+        document.getElementById("down_button").addEventListener("mouseup", arrow_handler(0));  
         
-        document.getElementById("right_button").addEventListener("mousedown", right_button_press_handler);   
-        document.getElementById("right_button").addEventListener("mouseup", right_button_release_handler);  
+        document.getElementById("right_button").addEventListener("mousedown", arrow_handler(3));   
+        document.getElementById("right_button").addEventListener("mouseup", arrow_handler(0));  
         
-        document.getElementById("left_button").addEventListener("mousedown", left_button_press_handler);   
-        document.getElementById("left_button").addEventListener("mouseup", left_button_release_handler); 
+        document.getElementById("left_button").addEventListener("mousedown", arrow_handler(4));   
+        document.getElementById("left_button").addEventListener("mouseup", arrow_handler(0)); 
         
-        document.getElementById("stop_button").addEventListener("mousedown", stop_button_press_handler); 
+        document.getElementById("stop_button").addEventListener("mousedown", arrow_handler(0); 
         
         document.getElementById("manual_button").addEventListener("mousedown", manual_button_press_handler); 
         document.getElementById("auto_button").addEventListener("mousedown", auto_button_press_handler);

@@ -155,7 +155,7 @@ def serial_thread():
         no_of_bytes_waiting = serial_port.inWaiting()
         if no_of_bytes_waiting > 19: # the ardu sends 20 bytes at the time (17 data, 2 control)
             # read the first byte (read 1 byte): (ord: gives the actual value of the byte)
-            first_byte = ord(serial_port.read(size = 1)) 
+            first_byte = np.uint8(ord(serial_port.read(size = 1))) 
             
             # read all data bytes if first byte was the start byte:
             if first_byte == 100:
@@ -165,13 +165,13 @@ def serial_thread():
                     serial_data.append(ord(serial_port.read(size = 1)))
                 
                 # read the received checksum:
-                checksum = ord(serial_port.read(size = 1))
+                checksum = np.uint8(ord(serial_port.read(size = 1)))
                 
                 # calculate checksum for the received data bytes: (pleae note that the use of uint8 and int8 exactly match what is sent from the arduino)
                 calc_checksum = np.uint8(np.uint8(serial_data[0]) + np.uint8(serial_data[1]) + 
                     np.uint8(serial_data[2]) + np.uint8(serial_data[3]) + np.uint8(serial_data[4]) + 
                     np.int8(serial_data[5]) + np.int8(serial_data[6]) + np.int8(serial_data[7]) + 
-                    np.int8(serial_data[8]) + np.int8(serial_data[9]) + np.int8(serial_data[10]) + 
+                    np.int8(serial_data[8]) + np.uint8(serial_data[9]) + np.uint8(serial_data[10]) + 
                     np.uint8(serial_data[11]) + np.uint8(serial_data[12]) + np.uint8(serial_data[13]) + 
                     np.uint8(serial_data[14]) + np.uint8(serial_data[15]) + np.uint8(serial_data[16]))
 
@@ -327,10 +327,26 @@ def phone():
 def handle_my_custom_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
        
-@socketio.on("button_event")
-def handle_button_event(sent_dict):
+@socketio.on("arrow_event")
+def handle_arrow_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
-    serial_port.write(sent_dict["data"] + "\n") # "\n" is used as a delimiter char when the arduino reads the serial port
+    start_byte = np.uint8(100)
+    manual_state = np.int8(sent_dict["data"])
+    mode = np.int8(-1)
+    Kp = np.int8(-1)
+    Kd = np.int16(-1)
+    Kd_low = np.uint8(np.bitwise_and(Kd, 255)) # (Kd & 0x00FF)
+    Kd_high = np.uint8(np.bitwise_and(Kd, 65280)/256) # (Kd & 0xFF00)/256
+    
+    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high)
+    
+    serial_port.write(bytes(start_byte))
+    serial_port.write(bytes(manual_state))
+    serial_port.write(bytes(mode))
+    serial_port.write(bytes(Kp))
+    serial_port.write(bytes(Kd_low))
+    serial_port.write(bytes(Kd_high))
+    serial_port.write(bytes(checksum))
 
 @socketio.on("touch_event")
 def handle_touch_event(sent_dict):

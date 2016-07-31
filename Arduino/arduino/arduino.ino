@@ -256,129 +256,68 @@ void run_manual_state()
 
 void read_serial()
 {
-    // (I found that "while" works better than "if", with "while" we always empty the input buffer)
-    while (Serial.available())
+    int no_of_bytes_waiting = Serial.available();
+    while (no_of_bytes_waiting > 7) // the RPI sends 7 bytes at the time (5 data, 2 control)
     {
-        // Read the serial input: (a maximum of 8 bytes = 8 chars (letters/digits))
-        char input_buffer[8];
-        Serial.readBytesUntil('\n', input_buffer, 8); // read bytes until reach "\n"-char ('\n' are used as delimiter)
-        int serial_input = atoi(input_buffer); // convert the read bytes (chars) to the corresponding integer
-        //Serial.println(serial_input);
+        // read the first byte:
+        uint8_t first_byte = Serial.read();
         
-        // if in manual mode:
-        if (mode == manual_int)
+        // read all data bytes if the first byte was the start byte:
+        if (first_byte == 100)
         {
-            // Change manual state if requested:
-            if (serial_input == stop_int || serial_input == forward_int
-            || serial_input == backward_int || serial_input == right_int
-            || serial_input == left_int)
-            {
-                manual_state = serial_input;
-            }
+            // read all data bytes:
+            int8_t manual_state_byte = Serial.read();
+            int8_t mode_byte = Serial.read();
+            int8_t Kp_byte = Serial.read();
+            uint8_t Kd_low_byte = Serial.read();
+            uint8_t Kd_high_byte = Serial.read();
             
-            // Change to auto mode if requested:
-            else if (serial_input == auto_int)
-            {
-                mode = auto_int; // set the mode to auto
-                startup_counter = 0; // reset the startup counter, to give the user some time to get away
-            }
+            // read the received checksum:
+            uint8_t checksum = Serial.read();
             
-            // Do nothing if manual is requested again:
-            else if (serial_input == manual_int)
-            {
+            // calculate checksum for the received data bytes:
+            uint8_t calc_checksum = manual_state_byte + mode_byte + Kp_byte + 
+                Kd_low_byte + Kd_high_byte;
                 
-            }
-            
-            // Update both Kp and Kd if both was sent:
-            else if (serial_input == Kp_and_Kd_int)
+            // update the variables with the read serial data only if the checksums match:
+            if (calc_checksum == checksum)
             {
-                input_buffer[8] = {};
-                Serial.readBytesUntil('\n', input_buffer, 8);
-                Kp = atoi(input_buffer);
+                if (manual_state_byte > 0) // -1 is sent if it's not supposed to be read
+                {
+                    manual_state = manual_state_byte;
+                }
                 
-                input_buffer[8] = {};
-                Serial.readBytesUntil('\n', input_buffer, 8);
-                Kd = atoi(input_buffer);
+                if (mode_byte > 0) // -1 is sent if it's not supposed to be read
+                {
+                    mode = mode_byte;
+                }
+                
+                if (Kp_byte > 0) // -1 is sent if it's not supposed to be read
+                {
+                    Kp = Kp_byte;
+                }
+
+                int16_t Kd_16 = (Kd_low_byte + Kd_high_byte*256);
+                if (Kd_16> 0) // -1 is sent if it's not supposed to be read
+                {
+                    Kd = Kd_16;
+                }                
             }
             
-            // Update Kp if only Kp was sent:
-            else if (serial_input == Kp_int)
+            else // if the checksums doesn't match: something weird has happend during transmission: flush input bufer and stat over
             {
-                input_buffer[8] = {};
-                Serial.readBytesUntil('\n', input_buffer, 8);
-                Kp = atoi(input_buffer);
-            }
-            
-            // Update Kd if only Kd was sent:
-            else if (serial_input == Kd_int)
-            {
-                input_buffer[8] = {};
-                Serial.readBytesUntil('\n', input_buffer, 8);
-                Kd = atoi(input_buffer);
-            }
-            
-            else
-            {
-                manual_state = stop_int; // if something is weird: stop (this shouldn't happen)
+                while (Serial.available())
+                {
+                    uint8_t data = Serial.read();
+                }
             }
         }
-
-        // else if in auto mode:
-        else if (mode == auto_int)
+        
+        else // if the first byte isn't the start byte: we're not in sync: just start over and read the next byte until we get in sync (until we reach the start byte) 
         {
-            // Change to manual mode if requested:
-            if (serial_input == manual_int)
-            {
-                mode = manual_int;
-                manual_state = stop_int; // don't move in the very first loop after a mode change
-            }
             
-            // Do nothing if auto is requested again:
-            else if (serial_input == auto_int)
-            {
-                
-            }
-            
-            // Do nothing if a manual state is requested in auto:
-            else if (serial_input == stop_int || serial_input == forward_int
-            || serial_input == backward_int || serial_input == right_int
-            || serial_input == left_int)
-            {
-                
-            }
-            
-            // Read both Kp and Kd (to clean the serial buffer), but don't update them in auto:
-            else if (serial_input == Kp_and_Kd_int)
-            {
-                input_buffer[8] = {};
-                Serial.readBytesUntil('\n', input_buffer, 8);
-                
-                input_buffer[8] = {};
-                Serial.readBytesUntil('\n', input_buffer, 8);
-            }
-            
-            // Read Kp (to clean the serial buffer), but don't update it in auto:
-            else if (serial_input == Kp_int)
-            {
-                input_buffer[8] = {};
-                Serial.readBytesUntil('\n', input_buffer, 8);
-            }
-            
-            // Read Kd (to clean the serial buffer), but don't update it in auto:
-            else if (serial_input == Kd_int)
-            {
-                input_buffer[8] = {};
-                Serial.readBytesUntil('\n', input_buffer, 8);
-            }
-            
-            // If something is weird, stop (this shouldn't happen):
-            else
-            {
-                mode = manual_int;
-                manual_state = stop_int; 
-            }
-        }  
-    } 
+        }
+    }
 }
 
 void read_IR_sensors()
@@ -890,7 +829,7 @@ void setup()
 
 void loop()
 {  
-    read_serial();
+  //  read_serial();
     read_IR_sensors();
     filter_IR_values();
     convert_IR_values();
