@@ -144,7 +144,6 @@ def web_thread():
     while 1:
         # send all data for display on the web page:
         socketio.emit("new_data", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "Kp": Kp, "Kd": Kd, "AUTO_STATE": AUTO_STATE, "manual_state": manual_state, "mode": mode})
-        
         # delay for 0.1 sec (for ~ 10 Hz loop frequency):
         time.sleep(0.1) 
         
@@ -154,7 +153,7 @@ def serial_thread():
 
     while 1:
         no_of_bytes_waiting = serial_port.inWaiting()
-        if no_of_bytes_waiting > 19: # the ardu sends 19 bytes at the time (17 data, 2 control)
+        if no_of_bytes_waiting > 19: # the ardu sends 20 bytes at the time (17 data, 2 control)
             # read the first byte (read 1 byte): (ord: gives the actual value of the byte)
             first_byte = ord(serial_port.read(size = 1)) 
             
@@ -164,33 +163,49 @@ def serial_thread():
                 # read all data bytes:
                 for counter in range(17): # 17 data bytes is sent from the ardu
                     serial_data.append(ord(serial_port.read(size = 1)))
-                # read last byte:
-                last_byte = ord(serial_port.read(size = 1)) 
                 
-                # update the variables with the read serial data only if the last byte was the end byte:
-                if last_byte == 200:
-                    IR_0 = serial_data[0]
-                    IR_1 = serial_data[1]
-                    IR_2 = serial_data[2]
-                    IR_3 = serial_data[3]
-                    IR_4 = serial_data[4]
+                # read the received checksum:
+                checksum = ord(serial_port.read(size = 1))
+                
+                # calculate checksum for the received data bytes: (pleae note that the use of uint8 and int8 exactly match what is sent from the arduino)
+                calc_checksum = np.uint8(np.uint8(serial_data[0]) + np.uint8(serial_data[1]) + 
+                    np.uint8(serial_data[2]) + np.uint8(serial_data[3]) + np.uint8(serial_data[4]) + 
+                    np.int8(serial_data[5]) + np.int8(serial_data[6]) + np.int8(serial_data[7]) + 
+                    np.int8(serial_data[8]) + np.int8(serial_data[9]) + np.int8(serial_data[10]) + 
+                    np.uint8(serial_data[11]) + np.uint8(serial_data[12]) + np.uint8(serial_data[13]) + 
+                    np.uint8(serial_data[14]) + np.uint8(serial_data[15]) + np.uint8(serial_data[16]))
+
+                # update the variables with the read serial data only if the checksums match:
+                if calc_checksum == checksum:
+                    IR_0 = int(np.uint8(serial_data[0])) # (int() is needed to convert it something that can be sent to the webpage) 
+                    IR_1 = int(np.uint8(serial_data[1]))
+                    IR_2 = int(np.uint8(serial_data[2]))
+                    IR_3 = int(np.uint8(serial_data[3]))
+                    IR_4 = int(np.uint8(serial_data[4]))
                     IR_Yaw_right = int(np.int8(serial_data[5])) # IR_Yaw_right was sent as an int8_t, but in order to make python treat it as one we first need to tell it so explicitly with the help of numpy, before converting the result (a number between -128 and +127) to the corresponding python int 
                     IR_Yaw_left = int(np.int8(serial_data[6]))
                     Yaw = int(np.int8(serial_data[7]))
                     p_part = int(np.int8(serial_data[8]))
-                    alpha_low_byte = int(np.int8(serial_data[9]))
-                    alpha_high_byte = int(np.int8(serial_data[10])) # yes, we need to first treat both the low and high bytes as int8:s, try it by hand and a simple example
-                    alpha = alpha_low_byte + alpha_high_byte*256 # (mult with 256 corresponds to a 8 bit left shift)
-                    Kp = serial_data[11]
-                    Kd_low_byte = serial_data[12]
-                    Kd_high_byte = serial_data[13]
-                    Kd = Kd_low_byte + Kd_high_byte*256
-                    AUTO_STATE = auto_states[serial_data[14]] # look up the received integer in the auto_states dict
-                    manual_state = manual_states[serial_data[15]]
-                    mode = mode_states[serial_data[16]]
-                else: # if final byte doesn't match: something weird has happened during transmission: flush input buffer and start over
+                    alpha_low_byte = np.uint8(serial_data[9])
+                    alpha_high_byte = np.uint8(serial_data[10]) # yes, we need to first treat both the low and high bytes as uint8:s, try it by hand and a simple example (try sending -1)
+                    alpha = int(np.int16(alpha_low_byte + alpha_high_byte*256)) # (mult with 256 corresponds to a 8 bit left shift)
+                    Kp = int(np.uint8(serial_data[11]))
+                    Kd_low_byte = np.uint8(serial_data[12])
+                    Kd_high_byte = np.uint8(serial_data[13])
+                    Kd = int(Kd_low_byte + Kd_high_byte*256)
+                    AUTO_STATE = auto_states[int(np.uint8(serial_data[14]))] # look up the received integer in the auto_states dict
+                    manual_state = manual_states[int(np.uint8(serial_data[15]))]
+                    mode = mode_states[int(np.uint8(serial_data[16]))]
+                else: # if the checksums doesn't match: something weird has happened during transmission: flush input buffer and start over
                     serial_port.flushInput()
-                    print("Something went wrong in the transaction: final byte didn't match!")                  
+                    print("Something went wrong in the transaction: checksums didn't match!") 
+                    print("Something went wrong in the transaction: checksums didn't match!")   
+                    print("Something went wrong in the transaction: checksums didn't match!")   
+                    print("Something went wrong in the transaction: checksums didn't match!")   
+                    print("Something went wrong in the transaction: checksums didn't match!")   
+                    print("Something went wrong in the transaction: checksums didn't match!")   
+                    print("Something went wrong in the transaction: checksums didn't match!")   
+                    print("Something went wrong in the transaction: checksums didn't match!")                       
             else: # if first byte isn't the start byte: we're not in sync: just read the next byte until we get in sync (until we reach the start byte)
                 pass
         else: # if not enough bytes for entire transmission, just wait for more data:

@@ -838,12 +838,17 @@ void send_serial()
     int8_t Yaw_byte = restrict_to_signed_size(Yaw);
     int8_t p_part_byte = restrict_to_signed_size(p_part);
     int16_t alpha_two_byte = alpha; // (don't have to restrict it to fit 16 bits)
-    int8_t alpha_low_byte = (alpha_two_byte & 0x00FF); // get the low byte and treat is as an int8_t (yes, it should be this way, test it with pen and paper and some simple example)
-    int8_t alpha_high_byte = (alpha_two_byte & 0xFF00)/256; // get the high byte and treat is as an int8_t
+    uint8_t alpha_low_byte = (alpha_two_byte & 0x00FF); // get the low byte and treat is as an uint8_t (yes, it should be this way, test it with pen and paper and some simple example (try sending -1, that shows very clearly why it has to be done this way))
+    uint8_t alpha_high_byte = (alpha_two_byte & 0xFF00)/256; // get the high byte and treat is as an uint8_t
     uint8_t Kp_byte = restrict_to_unsigned_size(Kp);
     uint16_t Kd_two_byte = Kd; // (you don't have to restrict it to fit 16 bits since it can represent such big numbers)
     uint8_t Kd_low_byte = (Kd_two_byte & 0x00FF); // Get the low byte by bitwise AND with 0000 0000 1111 1111
     uint8_t Kd_high_byte = (Kd_two_byte & 0xFF00)/256; // Get the high byte by bitwise AND with 1111 1111 0000 0000 and 8 bit right shift (division by 256)
+    
+    // calculate checksum for the data bytes to be sent: (this will obviously overflow the uint8_t sometimes, but that's not a problem since we will do the exact same calculation on the receiving end (on the RPI) and then compare the two)
+    uint8_t checksum = IR_0_byte + IR_1_byte + IR_2_byte + IR_3_byte + IR_4_byte + IR_Yaw_right_byte + 
+        IR_Yaw_left_byte + Yaw_byte + p_part_byte + alpha_low_byte + alpha_high_byte + Kp_byte + 
+        Kd_low_byte + Kd_high_byte + AUTO_STATE + manual_state + mode;
     
     // indicate start of transmission:
     Serial.write(100);
@@ -867,8 +872,8 @@ void send_serial()
     Serial.write(manual_state);
     Serial.write(mode);
     
-    // indicate end of transmission:
-    Serial.write(200);
+    // send checksum:
+    Serial.write(checksum);
 }
 
 void setup()
