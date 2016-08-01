@@ -153,7 +153,7 @@ def serial_thread():
 
     while 1:
         no_of_bytes_waiting = serial_port.inWaiting()
-        if no_of_bytes_waiting > 19: # the ardu sends 20 bytes at the time (17 data, 2 control)
+        if no_of_bytes_waiting > 18: # the ardu sends 19 bytes at the time (17 data, 2 control)
             # read the first byte (read 1 byte): (ord: gives the actual value of the byte)
             first_byte = np.uint8(ord(serial_port.read(size = 1))) 
             
@@ -171,7 +171,7 @@ def serial_thread():
                 calc_checksum = np.uint8(np.uint8(serial_data[0]) + np.uint8(serial_data[1]) + 
                     np.uint8(serial_data[2]) + np.uint8(serial_data[3]) + np.uint8(serial_data[4]) + 
                     np.int8(serial_data[5]) + np.int8(serial_data[6]) + np.int8(serial_data[7]) + 
-                    np.int8(serial_data[8]) + np.uint8(serial_data[9]) + np.uint8(serial_data[10]) + 
+                    np.int8(serial_data[8]) + np.int8(serial_data[9]) + np.int8(serial_data[10]) + 
                     np.uint8(serial_data[11]) + np.uint8(serial_data[12]) + np.uint8(serial_data[13]) + 
                     np.uint8(serial_data[14]) + np.uint8(serial_data[15]) + np.uint8(serial_data[16]))
 
@@ -329,33 +329,39 @@ def handle_my_custom_event(sent_dict):
        
 @socketio.on("arrow_event")
 def handle_arrow_event(sent_dict):
-    print("Recieved message: " + sent_dict["data"])
-    start_byte = np.uint8(100)
-    manual_state = np.int8(sent_dict["data"])
-    mode = np.int8(-1)
-    Kp = np.int8(-1)
-    Kd = np.int16(-1)
-    Kd_low = np.uint8(np.bitwise_and(Kd, 255)) # (Kd & 0x00FF)
-    Kd_high = np.uint8(np.bitwise_and(Kd, 65280)/256) # (Kd & 0xFF00)/256
+    print("Recieved message: " + str(sent_dict["data"]))
     
-    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high)
+    # get manual state, set start byte and set everything else to '-1' to mark that they are not to be read:
+    start_byte = 100
+    manual_state = sent_dict["data"]
+    mode = -1
+    Kp = -1
+    Kd = -1
+    Kd_low = (Kd & 0x00FF)
+    Kd_high = (Kd & 0xFF00)/256
     
-    serial_port.write(bytes(start_byte))
-    serial_port.write(bytes(manual_state))
-    serial_port.write(bytes(mode))
-    serial_port.write(bytes(Kp))
-    serial_port.write(bytes(Kd_low))
-    serial_port.write(bytes(Kd_high))
-    serial_port.write(bytes(checksum))
+    # caculate checksum for the data bytes to be sent, in exactly the same way as on the arduino: (note the use of uint8 and int8, compare to "read_serial" on the arduino)
+    checksum = np.uint8(np.int8(manual_state) + np.int8(mode) + np.int8(Kp) + np.uint8(Kd_low) + np.uint8(Kd_high))
+    
+    # send all data bytes: (as uint8 since I don't seem to be able to convert int8:s to raw binary data and send them properly, it doesn't matter anyway since we convert them to int8:s on the arduino)
+    serial_port.write(np.uint8(start_byte).tobytes())
+    serial_port.write(np.uint8(manual_state).tobytes())
+    serial_port.write(np.uint8(mode).tobytes())
+    serial_port.write(np.uint8(Kp).tobytes())
+    serial_port.write(np.uint8(Kd_low).tobytes())
+    serial_port.write(np.uint8(Kd_high).tobytes())
+    serial_port.write(checksum.tobytes())
+    
+    print(np.uint8(-1))
 
 @socketio.on("touch_event")
 def handle_touch_event(sent_dict):
-    print("Recieved message: " + sent_dict["data"])
+    print("Recieved message: " + str(sent_dict["data"]))
     serial_port.write(sent_dict["data"] + "\n")
 
 @socketio.on("key_event")
 def handle_key_event(sent_dict):
-    print("Recieved message: " + sent_dict["data"])
+    print("Recieved message: " + str(sent_dict["data"]))
     serial_port.write(sent_dict["data"] + "\n")
     
 @socketio.on("parameters_event")

@@ -31,11 +31,11 @@ float IR_Yaw_right, IR_Yaw_left, Yaw, Yaw_rad;
 float p_part;
 float alpha;
 
-int Kp = 4;
-int Kd = 350;
+int8_t Kp = 4;
+int16_t Kd = 350;
 
-int manual_state = stop_int;
-int mode = manual_int;
+int8_t manual_state = stop_int;
+int8_t mode = manual_int;
 STATE AUTO_STATE = CORRIDOR; // current auto state is "CORRIDOR" per default
 
 #define CORRIDOR_SIDE_DISTANCE 20 // Distance for determining whether in corridor or not
@@ -257,14 +257,14 @@ void run_manual_state()
 void read_serial()
 {
     int no_of_bytes_waiting = Serial.available();
-    while (no_of_bytes_waiting > 7) // the RPI sends 7 bytes at the time (5 data, 2 control)
+    if (no_of_bytes_waiting > 6) // the RPI sends 7 bytes at the time (5 data, 2 control)
     {
         // read the first byte:
         uint8_t first_byte = Serial.read();
         
         // read all data bytes if the first byte was the start byte:
         if (first_byte == 100)
-        {
+        {           
             // read all data bytes:
             int8_t manual_state_byte = Serial.read();
             int8_t mode_byte = Serial.read();
@@ -282,23 +282,24 @@ void read_serial()
             // update the variables with the read serial data only if the checksums match:
             if (calc_checksum == checksum)
             {
-                if (manual_state_byte > 0) // -1 is sent if it's not supposed to be read
+                if (manual_state_byte >= 0) // -1 is sent if it's not supposed to be read
                 {
                     manual_state = manual_state_byte;
                 }
                 
-                if (mode_byte > 0) // -1 is sent if it's not supposed to be read
+                if (mode_byte >= 0) // -1 is sent if it's not supposed to be read
                 {
                     mode = mode_byte;
                 }
                 
-                if (Kp_byte > 0) // -1 is sent if it's not supposed to be read
+                if (Kp_byte >= 0) // -1 is sent if it's not supposed to be read
                 {
                     Kp = Kp_byte;
                 }
 
-                int16_t Kd_16 = (Kd_low_byte + Kd_high_byte*256);
-                if (Kd_16> 0) // -1 is sent if it's not supposed to be read
+                uint16_t temp = (Kd_low_byte + Kd_high_byte*256);
+                int16_t Kd_16 = (int16_t) temp;
+                if (Kd_16 >= 0) // -1 is sent if it's not supposed to be read
                 {
                     Kd = Kd_16;
                 }                
@@ -308,7 +309,7 @@ void read_serial()
             {
                 while (Serial.available())
                 {
-                    uint8_t data = Serial.read();
+                    Serial.read();
                 }
             }
         }
@@ -829,7 +830,7 @@ void setup()
 
 void loop()
 {  
-  //  read_serial();
+    read_serial();
     read_IR_sensors();
     filter_IR_values();
     convert_IR_values();

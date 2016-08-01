@@ -653,6 +653,7 @@
         // buttons: 
         function arrow_handler(arrow_data)
         {
+            console.log("Test");
             socket.emit("arrow_event", {data: arrow_data});
         }
         
@@ -802,18 +803,18 @@
         socket.on("new_data", data_handler);
         
         // Buttons: 
-        document.getElementById("up_button").addEventListener("mousedown", arrow_handler(1));   
-        document.getElementById("up_button").addEventListener("mouseup", arrow_handler(0));
-        document.getElementById("down_button").addEventListener("mousedown", arrow_handler(2));   
-        document.getElementById("down_button").addEventListener("mouseup", arrow_handler(0));  
+        document.getElementById("up_button").addEventListener("mousedown", function () { arrow_handler(1) })   
+        document.getElementById("up_button").addEventListener("mouseup", function () { arrow_handler(0) });
+        document.getElementById("down_button").addEventListener("mousedown", function () { arrow_handler(2) });   
+        document.getElementById("down_button").addEventListener("mouseup", function () { arrow_handler(0) });  
         
-        document.getElementById("right_button").addEventListener("mousedown", arrow_handler(3));   
-        document.getElementById("right_button").addEventListener("mouseup", arrow_handler(0));  
+        document.getElementById("right_button").addEventListener("mousedown", function () { arrow_handler(3) });   
+        document.getElementById("right_button").addEventListener("mouseup", function () { arrow_handler(0) });  
         
-        document.getElementById("left_button").addEventListener("mousedown", arrow_handler(4));   
-        document.getElementById("left_button").addEventListener("mouseup", arrow_handler(0)); 
+        document.getElementById("left_button").addEventListener("mousedown", function () { arrow_handler(4) });   
+        document.getElementById("left_button").addEventListener("mouseup", function () { arrow_handler(0) }); 
         
-        document.getElementById("stop_button").addEventListener("mousedown", arrow_handler(0); 
+        document.getElementById("stop_button").addEventListener("mousedown", function () { arrow_handler(0) }); 
         
         document.getElementById("manual_button").addEventListener("mousedown", manual_button_press_handler); 
         document.getElementById("auto_button").addEventListener("mousedown", auto_button_press_handler);
