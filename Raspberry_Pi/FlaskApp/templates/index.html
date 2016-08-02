@@ -764,6 +764,8 @@
         
         function data_handler(sent_dict)
         {       
+            socket.emit("control_event", {data: "Hello!"}); // tell the RPI that the wifi connection is still working
+            
             IR_0_data = sent_dict["IR_0"];
             IR_1_data = sent_dict["IR_1"];
             IR_2_data = sent_dict["IR_2"];

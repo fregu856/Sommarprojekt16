@@ -31,6 +31,7 @@ manual_state = 0
 mode = 0
 
 latest_video_frame = []
+cycles_without_web_contact = 0
 
 # dictionary for converting serial incoming data regarding the current manual state:
 manual_states = {
@@ -138,11 +139,40 @@ def video_thread():
         
         # delay for 0.033 sec (for ~ 30 Hz loop frequency):
         time.sleep(0.033) 
+        
+def stop_runaway_robot():
+    # set mode to manual and manual_state to stop: (and everything else to the maximum number for their data type to mark that they are not to be read)
+    start_byte = np.uint8(100)
+    manual_state = np.uint8(0)
+    mode = np.uint8(5)
+    Kp = np.uint8(0xFF)
+    Kd = np.uint16(0xFFFF)
+    Kd_low = np.uint8((Kd & 0x00FF))
+    Kd_high = np.uint8((Kd & 0xFF00)/256)
+    
+    # caculate checksum for the data bytes to be sent:
+    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high)
+    
+    # send all data bytes:
+    serial_port.write(start_byte.tobytes())
+    serial_port.write(manual_state.tobytes())
+    serial_port.write(mode.tobytes())
+    serial_port.write(Kp.tobytes())
+    serial_port.write(Kd_low.tobytes())
+    serial_port.write(Kd_high.tobytes())
+    
+    # send checksum:
+    serial_port.write(checksum.tobytes())
 
 def web_thread():
+    global cycles_without_web_contact
+    
     while 1:
         # send all data for display on the web page:
         socketio.emit("new_data", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "Kp": Kp, "Kd": Kd, "AUTO_STATE": AUTO_STATE, "manual_state": manual_state, "mode": mode})
+        cycles_without_web_contact += 1
+        if cycles_without_web_contact > 5: # if we havn't had wifi contact for ~ 0.5 sec: stop the robot!
+            stop_runaway_robot()
         # delay for 0.1 sec (for ~ 10 Hz loop frequency):
         time.sleep(0.1) 
         
@@ -423,6 +453,11 @@ def handle_parameters_event(sent_dict):
     
     # send checksum:
     serial_port.write(checksum.tobytes())
+    
+@socketio.on("control_event")
+def handle_control_event(sent_dict):
+    global cycles_without_web_contact
+    cycles_without_web_contact = 0
         
 @app.errorhandler(404)
 def page_not_found(e):

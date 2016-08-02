@@ -285,7 +285,10 @@ void read_serial()
             {
                 if (manual_state_byte != 0xFF) // 0xFF (255) is sent if it's not supposed to be read
                 {
-                    manual_state = manual_state_byte;
+                    if (mode == manual_int) // only allow change of manual state in manual mode
+                    {
+                        manual_state = manual_state_byte;
+                    }
                 }
                 
                 if (mode_byte != 0xFF) // 0xFF is sent if it's not supposed to be read
