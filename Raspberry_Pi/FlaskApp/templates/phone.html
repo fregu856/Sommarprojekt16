@@ -163,94 +163,77 @@
                         
                     </div>
 
-                    <div class="chart-stage" style="height: 300px; width:100%">
-                        <div class="row">
-                            <div class="col-xs-6">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>State</th>
-                                        </tr>
-                                    </thead>
-                                    
-                                    <tbody>
-                                        <tr>
-                                            <td>1</td>
-                                            <td id="state_table_1_ph"></td> 
-                                        </tr>
-                                        
-                                       <tr>
-                                            <td>2</td>
-                                            <td id="state_table_2_ph"></td> 
-                                        </tr>
-                                        
-                                       <tr>
-                                            <td>3</td>
-                                            <td id="state_table_3_ph"></td> 
-                                        </tr>
-                                        
-                                        <tr>
-                                            <td>4</td>
-                                            <td id="state_table_4_ph"></td> 
-                                        </tr>
-                                        
-                                        <tr>
-                                            <td>5</td>
-                                            <td id="state_table_5_ph"></td> 
-                                        </tr>
-                                        
-                                        <tr>
-                                            <td>6</td>
-                                            <td id="state_table_6_ph"></td> 
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <div class="col-xs-6">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>State</th>
-                                        </tr>
-                                    </thead>
-                                    
-                                    <tbody>                                        
-                                       <tr>
-                                            <td>7</td>
-                                            <td id="state_table_7_ph"></td> 
-                                        </tr>
-                                        
-                                       <tr>
-                                            <td>8</td>
-                                            <td id="state_table_8_ph"></td> 
-                                        </tr>
-                                        
-                                        <tr>
-                                            <td>9</td>
-                                            <td id="state_table_9_ph"></td> 
-                                        </tr>
-                                        
-                                        <tr>
-                                            <td>10</td>
-                                            <td id="state_table_10_ph"></td> 
-                                        </tr>
-                                        
-                                        <tr>
-                                            <td>11</td>
-                                            <td id="state_table_11_ph"></td> 
-                                        </tr>
-                                        
-                                        <tr>
-                                            <td>12</td>
-                                            <td id="state_table_12_ph"></td> 
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <div class="chart-stage">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>State</th>
+                                </tr>
+                            </thead>
+                        
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td id="state_table_1_ph"></td> 
+                                </tr>
+                                
+                               <tr>
+                                    <td>2</td>
+                                    <td id="state_table_2_ph"></td> 
+                                </tr>
+                                
+                               <tr>
+                                    <td>3</td>
+                                    <td id="state_table_3_ph"></td> 
+                                </tr>
+                                
+                                <tr>
+                                    <td>4</td>
+                                    <td id="state_table_4_ph"></td> 
+                                </tr>
+                                
+                                <tr>
+                                    <td>5</td>
+                                    <td id="state_table_5_ph"></td> 
+                                </tr>
+                                
+                                <tr>
+                                    <td>6</td>
+                                    <td id="state_table_6_ph"></td> 
+                                </tr>
+
+                               <tr>
+                                    <td>7</td>
+                                    <td id="state_table_7_ph"></td> 
+                                </tr>
+                                
+                               <tr>
+                                    <td>8</td>
+                                    <td id="state_table_8_ph"></td> 
+                                </tr>
+                                
+                                <tr>
+                                    <td>9</td>
+                                    <td id="state_table_9_ph"></td> 
+                                </tr>
+                                
+                                <tr>
+                                    <td>10</td>
+                                    <td id="state_table_10_ph"></td> 
+                                </tr>
+                                
+                                <tr>
+                                    <td>11</td>
+                                    <td id="state_table_11_ph"></td> 
+                                </tr>
+                                
+                                <tr>
+                                    <td>12</td>
+                                    <td id="state_table_12_ph"></td> 
+                                </tr>
+                            </tbody>
+                        </table> 
                     </div>
                     
                     <div class="chart-notes">
@@ -313,63 +296,21 @@
             socket.emit('my event', {data: 'I\'m connected!'});
         }
         
-        function up_button_press_handler_ph() 
+        // buttons: 
+        function arrow_handler(arrow_data)
         {
-            socket.emit("touch_event", {data: "1"});
-        }
-        function up_button_release_handler_ph() 
-        {
-            socket.emit("touch_event", {data: "0"});
+            socket.emit("arrow_event", {data: arrow_data});
         }
         
-        function down_button_press_handler_ph() 
+        function mode_handler(mode_data)
         {
-            socket.emit("touch_event", {data: "2"});
-        }
-        function down_button_release_handler_ph() 
-        {
-            socket.emit("touch_event", {data: "0"});
-        }
-        
-        function right_button_press_handler_ph() 
-        {
-            socket.emit("touch_event", {data: "3"});
-        }
-        function right_button_release_handler_ph() 
-        {
-            socket.emit("touch_event", {data: "0"});
-        }
-        
-        function left_button_press_handler_ph() 
-        {
-            socket.emit("touch_event", {data: "4"});
-        }
-        function left_button_release_handler_ph() 
-        {
-            socket.emit("touch_event", {data: "0"});
-        }
-        
-        function stop_button_press_handler_ph() 
-        {
-            socket.emit("touch_event", {data: "0"});
-        }
-        
-        function manual_button_press_handler_ph() 
-        {
-            socket.emit("touch_event", {data: "5"});
-        }
-        
-        function auto_button_press_handler_ph() 
-        {
-            socket.emit("touch_event", {data: "6"});
+            socket.emit("mode_event", {data: mode_data});
         }
         
         function parameters_button_press_handler_ph() 
         {
             var Kp_input = document.getElementById("Kp_value_ph").value;
             var Kd_input = document.getElementById("Kd_value_ph").value;
-            console.log(Kp_input);
-            console.log(Kd_input);
             socket.emit("parameters_event", {Kp: Kp_input, Kd: Kd_input});
         }
         
@@ -415,22 +356,22 @@
         
         socket.on("new_data", data_handler);
         
-        document.getElementById("up_button_ph").addEventListener("touchstart", up_button_press_handler_ph);   
-        document.getElementById("up_button_ph").addEventListener("touchend", up_button_release_handler_ph);
+        document.getElementById("up_button_ph").addEventListener("touchstart", function () { arrow_handler(1) })  
+        document.getElementById("up_button_ph").addEventListener("touchend", function () { arrow_handler(0) }) 
 
-        document.getElementById("down_button_ph").addEventListener("touchstart", down_button_press_handler_ph);   
-        document.getElementById("down_button_ph").addEventListener("touchend", down_button_release_handler_ph);  
+        document.getElementById("down_button_ph").addEventListener("touchstart", function () { arrow_handler(2) });   
+        document.getElementById("down_button_ph").addEventListener("touchend", function () { arrow_handler(0) });  
         
-        document.getElementById("right_button_ph").addEventListener("touchstart", right_button_press_handler_ph);   
-        document.getElementById("right_button_ph").addEventListener("touchend", right_button_release_handler_ph);  
+        document.getElementById("right_button_ph").addEventListener("touchstart", function () { arrow_handler(3) });   
+        document.getElementById("right_button_ph").addEventListener("touchend", function () { arrow_handler(0) });  
         
-        document.getElementById("left_button_ph").addEventListener("touchstart", left_button_press_handler_ph);   
-        document.getElementById("left_button_ph").addEventListener("touchend", left_button_release_handler_ph);
+        document.getElementById("left_button_ph").addEventListener("touchstart", function () { arrow_handler(4) });   
+        document.getElementById("left_button_ph").addEventListener("touchend", function () { arrow_handler(0) }); 
 
-        document.getElementById("stop_button_ph").addEventListener("touchstart", stop_button_press_handler_ph);
+        document.getElementById("stop_button_ph").addEventListener("touchstart", function () { arrow_handler(0) }); 
 
-        document.getElementById("manual_button_ph").addEventListener("touchstart", manual_button_press_handler_ph);
-        document.getElementById("auto_button_ph").addEventListener("touchstart", auto_button_press_handler_ph);         
+        document.getElementById("manual_button_ph").addEventListener("touchstart", function () { mode_handler(5) })
+        document.getElementById("auto_button_ph").addEventListener("touchstart", function () { mode_handler(6) })       
         
         document.getElementById("parameters_button_ph").addEventListener("touchstart", parameters_button_press_handler_ph);
     </script>

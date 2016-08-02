@@ -31,11 +31,11 @@ float IR_Yaw_right, IR_Yaw_left, Yaw, Yaw_rad;
 float p_part;
 float alpha;
 
-int8_t Kp = 4;
-int16_t Kd = 350;
+uint8_t Kp = 4;
+uint16_t Kd = 350;
 
-int8_t manual_state = stop_int;
-int8_t mode = manual_int;
+uint8_t manual_state = stop_int;
+uint8_t mode = manual_int;
 STATE AUTO_STATE = CORRIDOR; // current auto state is "CORRIDOR" per default
 
 #define CORRIDOR_SIDE_DISTANCE 20 // Distance for determining whether in corridor or not
@@ -256,6 +256,7 @@ void run_manual_state()
 
 void read_serial()
 {
+    // (the RPI always send the same number of bytes once it sends something, eventhough there's never more than three data bytes that actually should be read. We do this in order to get a fix protocol, which just makes life easier IMO)
     int no_of_bytes_waiting = Serial.available();
     if (no_of_bytes_waiting > 6) // the RPI sends 7 bytes at the time (5 data, 2 control)
     {
@@ -266,9 +267,9 @@ void read_serial()
         if (first_byte == 100)
         {           
             // read all data bytes:
-            int8_t manual_state_byte = Serial.read();
-            int8_t mode_byte = Serial.read();
-            int8_t Kp_byte = Serial.read();
+            uint8_t manual_state_byte = Serial.read();
+            uint8_t mode_byte = Serial.read();
+            uint8_t Kp_byte = Serial.read();
             uint8_t Kd_low_byte = Serial.read();
             uint8_t Kd_high_byte = Serial.read();
             
@@ -282,26 +283,31 @@ void read_serial()
             // update the variables with the read serial data only if the checksums match:
             if (calc_checksum == checksum)
             {
-                if (manual_state_byte >= 0) // -1 is sent if it's not supposed to be read
+                if (manual_state_byte != 0xFF) // 0xFF (255) is sent if it's not supposed to be read
                 {
                     manual_state = manual_state_byte;
                 }
                 
-                if (mode_byte >= 0) // -1 is sent if it's not supposed to be read
+                if (mode_byte != 0xFF) // 0xFF is sent if it's not supposed to be read
                 {
                     mode = mode_byte;
                 }
                 
-                if (Kp_byte >= 0) // -1 is sent if it's not supposed to be read
+                if (Kp_byte != 0xFF) // 0xFF is sent if it's not supposed to be read
                 {
-                    Kp = Kp_byte;
+                    if (mode == manual_int) // only allow change of parameters in manual mode
+                    {
+                        Kp = Kp_byte; 
+                    }
                 }
 
-                uint16_t temp = (Kd_low_byte + Kd_high_byte*256);
-                int16_t Kd_16 = (int16_t) temp;
-                if (Kd_16 >= 0) // -1 is sent if it's not supposed to be read
+                uint16_t Kd_16 = (Kd_low_byte + Kd_high_byte*256);
+                if (Kd_16 != 0xFFFF) // 0xFFFF (65535) is sent if it's not supposed to be read
                 {
-                    Kd = Kd_16;
+                    if (mode == manual_int) // only allow change of parameters in manual mode
+                    {
+                        Kd = Kd_16;
+                    }
                 }                
             }
             

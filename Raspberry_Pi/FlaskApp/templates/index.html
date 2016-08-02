@@ -653,26 +653,18 @@
         // buttons: 
         function arrow_handler(arrow_data)
         {
-            console.log("Test");
             socket.emit("arrow_event", {data: arrow_data});
         }
         
-        function manual_button_press_handler() 
+        function mode_handler(mode_data)
         {
-            socket.emit("button_event", {data: "5"});
-        }
-        
-        function auto_button_press_handler() 
-        {
-            socket.emit("button_event", {data: "6"});
+            socket.emit("mode_event", {data: mode_data});
         }
         
         function parameters_button_press_handler() 
         {
             var Kp_input = document.getElementById("Kp_value").value;
             var Kd_input = document.getElementById("Kd_value").value;
-            console.log(Kp_input)
-            console.log(Kd_input)
             socket.emit("parameters_event", {Kp: Kp_input, Kd: Kd_input});
         }
         
@@ -687,7 +679,7 @@
                 {
                     if (previous_data !== 1) // Only send data if it is new data (only send once per key press)
                     {
-                        socket.emit("key_event", {data: "1"});
+                        socket.emit("arrow_event", {data: 1});
                         previous_data = 1;
                     } 
                     break;
@@ -698,7 +690,7 @@
                 {
                     if (previous_data !== 2)
                     {
-                        socket.emit("key_event", {data: "2"});
+                        socket.emit("arrow_event", {data: 2});
                         previous_data = 2;
                     } 
                     break;
@@ -709,7 +701,7 @@
                 {
                     if (previous_data !== 3)
                     {
-                        socket.emit("key_event", {data: "3"});
+                        socket.emit("arrow_event", {data: 3});
                         previous_data = 3;
                     } 
                     break;
@@ -720,7 +712,7 @@
                 {
                     if (previous_data !== 4)
                     {
-                        socket.emit("key_event", {data: "4"});
+                        socket.emit("arrow_event", {data: 4});
                         previous_data = 4;
                     } 
                     break;
@@ -747,7 +739,7 @@
                 case 65:    // A key (left)
                 case 97:    // a key (left)
                 {
-                    socket.emit("key_event", {data: "0"});
+                    socket.emit("arrow_event", {data: 0});
                     previous_data = 0;
                     break;
                 }
@@ -805,6 +797,7 @@
         // Buttons: 
         document.getElementById("up_button").addEventListener("mousedown", function () { arrow_handler(1) })   
         document.getElementById("up_button").addEventListener("mouseup", function () { arrow_handler(0) });
+        
         document.getElementById("down_button").addEventListener("mousedown", function () { arrow_handler(2) });   
         document.getElementById("down_button").addEventListener("mouseup", function () { arrow_handler(0) });  
         
@@ -816,8 +809,8 @@
         
         document.getElementById("stop_button").addEventListener("mousedown", function () { arrow_handler(0) }); 
         
-        document.getElementById("manual_button").addEventListener("mousedown", manual_button_press_handler); 
-        document.getElementById("auto_button").addEventListener("mousedown", auto_button_press_handler);
+        document.getElementById("manual_button").addEventListener("mousedown", function () { mode_handler(5) })
+        document.getElementById("auto_button").addEventListener("mousedown", function () { mode_handler(6) })
         
         document.getElementById("parameters_button").addEventListener("mousedown", parameters_button_press_handler);
         

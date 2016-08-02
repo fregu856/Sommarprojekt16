@@ -100,8 +100,7 @@ def check_parameter_input(value):
                 value = "" # value must be positive! (so don't send the parameter)
                 return value
             else: # if positive integer
-                return value  
-            
+                return value        
     else: # if value == 0 or value is empty (if the parameter field was left empty)
         return value
         
@@ -331,61 +330,99 @@ def handle_my_custom_event(sent_dict):
 def handle_arrow_event(sent_dict):
     print("Recieved message: " + str(sent_dict["data"]))
     
-    # get manual state, set start byte and set everything else to '-1' to mark that they are not to be read:
-    start_byte = 100
-    manual_state = sent_dict["data"]
-    mode = -1
-    Kp = -1
-    Kd = -1
-    Kd_low = (Kd & 0x00FF)
-    Kd_high = (Kd & 0xFF00)/256
+    # get manual state, set start byte and set everything else to the maximum number for their data type to mark that they are not to be read:
+    start_byte = np.uint8(100)
+    manual_state = np.uint8(sent_dict["data"])
+    mode = np.uint8(0xFF)
+    Kp = np.uint8(0xFF)
+    Kd = np.uint16(0xFFFF)
+    Kd_low = np.uint8((Kd & 0x00FF))
+    Kd_high = np.uint8((Kd & 0xFF00)/256)
     
-    # caculate checksum for the data bytes to be sent, in exactly the same way as on the arduino: (note the use of uint8 and int8, compare to "read_serial" on the arduino)
-    checksum = np.uint8(np.int8(manual_state) + np.int8(mode) + np.int8(Kp) + np.uint8(Kd_low) + np.uint8(Kd_high))
+    # caculate checksum for the data bytes to be sent:
+    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high)
     
-    # send all data bytes: (as uint8 since I don't seem to be able to convert int8:s to raw binary data and send them properly, it doesn't matter anyway since we convert them to int8:s on the arduino)
-    serial_port.write(np.uint8(start_byte).tobytes())
-    serial_port.write(np.uint8(manual_state).tobytes())
-    serial_port.write(np.uint8(mode).tobytes())
-    serial_port.write(np.uint8(Kp).tobytes())
-    serial_port.write(np.uint8(Kd_low).tobytes())
-    serial_port.write(np.uint8(Kd_high).tobytes())
+    # send all data bytes:
+    serial_port.write(start_byte.tobytes())
+    serial_port.write(manual_state.tobytes())
+    serial_port.write(mode.tobytes())
+    serial_port.write(Kp.tobytes())
+    serial_port.write(Kd_low.tobytes())
+    serial_port.write(Kd_high.tobytes())
+    
+    # send checksum:
     serial_port.write(checksum.tobytes())
     
-    print(np.uint8(-1))
-
-@socketio.on("touch_event")
-def handle_touch_event(sent_dict):
+@socketio.on("mode_event")
+def handle_mode_event(sent_dict):
     print("Recieved message: " + str(sent_dict["data"]))
-    serial_port.write(sent_dict["data"] + "\n")
-
-@socketio.on("key_event")
-def handle_key_event(sent_dict):
-    print("Recieved message: " + str(sent_dict["data"]))
-    serial_port.write(sent_dict["data"] + "\n")
+    
+    # get mode state, set start byte and set everything else to the maximum number for their data type to mark that they are not to be read:
+    start_byte = np.uint8(100)
+    manual_state = np.uint8(0xFF)
+    mode = np.uint8(sent_dict["data"])
+    Kp = np.uint8(0xFF)
+    Kd = np.uint16(0xFFFF)
+    Kd_low = np.uint8((Kd & 0x00FF))
+    Kd_high = np.uint8((Kd & 0xFF00)/256)
+    
+    # caculate checksum for the data bytes to be sent:
+    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high)
+    
+    # send all data bytes:
+    serial_port.write(start_byte.tobytes())
+    serial_port.write(manual_state.tobytes())
+    serial_port.write(mode.tobytes())
+    serial_port.write(Kp.tobytes())
+    serial_port.write(Kd_low.tobytes())
+    serial_port.write(Kd_high.tobytes())
+    
+    # send checksum:
+    serial_port.write(checksum.tobytes())
     
 @socketio.on("parameters_event")
 def handle_parameters_event(sent_dict):
     Kp_input = sent_dict["Kp"]
-    Kd_input = sent_dict["Kd"]
-    
+    Kd_input = sent_dict["Kd"]   
     print("Recieved Kp: " + Kp_input)
     print("Recieved Kd: " + Kd_input)
     
-    Kp_input = check_parameter_input(Kp_input) # After this, Kp_input is non-empty only if the user typed a positive integer into the Kp field (and thus we should send it to the arduino)
-    Kd_input = check_parameter_input(Kd_input)
-        
+    # check parameter input and set Kp, Kd to the parameter input only it it is non-empty and valid:
+    Kp_input = check_parameter_input(Kp_input) # After this, Kp_input is non-empty only if the user typed a positive (>= 0) integer into the Kp field (and thus we should send it to the arduino)
+    Kd_input = check_parameter_input(Kd_input)      
     if (Kp_input or Kp_input == 0) and (Kd_input or Kd_input == 0): # if valid, non-empty input for both Kp and Kd: send both Kp and Kd
-        serial_port.write("7" + "\n" + str(Kp_input) + "\n" + str(Kd_input) + "\n")
-        print("New Kp and Kd sent!")
-
+        Kp = np.uint8(Kp_input)
+        Kd = np.uint16(Kd_input)
     elif Kp_input or Kp_input == 0: # if only Kp:
-        serial_port.write("8" + "\n" + str(Kp_input) + "\n") # 8 = Just Kp
-        print("New Kp sent!")
-
+        Kp = np.uint8(Kp_input)
+        Kd = np.uint16(0xFFFF)
     elif Kd_input or Kd_input == 0: # if only Kd:
-        serial_port.write("9" + "\n" + str(Kd_input) + "\n") # 9 = Just Kd
-        print("New Kd sent!")
+        Kp = np.uint8(0xFF)
+        Kd = np.uint16(Kd_input)
+    else: # if neither is valid/non-empty:
+        Kp = np.uint8(0xFF)
+        Kd = np.uint16(0xFFFF)
+    Kd_low = np.uint8((Kd & 0x00FF))
+    Kd_high = np.uint8((Kd & 0xFF00)/256)
+    
+    # set start byte and set everything else to the maximum number for their data type to mark that they are not to be read:
+    start_byte = np.uint8(100)
+    manual_state = np.uint8(0xFF)
+    mode = np.uint8(0xFF)
+    
+    # caculate checksum for the data bytes to be sent:
+    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high)
+    
+    # send all data bytes:
+    serial_port.write(start_byte.tobytes())
+    serial_port.write(manual_state.tobytes())
+    serial_port.write(mode.tobytes())
+    serial_port.write(Kp.tobytes())
+    serial_port.write(Kd_low.tobytes())
+    serial_port.write(Kd_high.tobytes())
+    
+    # send checksum:
+    serial_port.write(checksum.tobytes())
         
 @app.errorhandler(404)
 def page_not_found(e):
