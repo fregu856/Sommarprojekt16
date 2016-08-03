@@ -293,7 +293,15 @@ void read_serial()
                 
                 if (mode_byte != 0xFF) // 0xFF is sent if it's not supposed to be read
                 {
-                    mode = mode_byte;
+                    if ((mode_byte == auto_int) && (mode == manual_int)) // if mode is changed from manual to auto:
+                    {
+                        mode = mode_byte;
+                        AUTO_STATE = CORRIDOR;
+                    }
+                    else
+                    {
+                        mode = mode_byte;
+                    }
                 }
                 
                 if (Kp_byte != 0xFF) // 0xFF is sent if it's not supposed to be read
@@ -477,7 +485,7 @@ void calculate_Yaw()
 	float l_delta_left = IR_distance[3] - IR_distance[4];
 
     // Calculate the angle relative the corridor walls, based on the right side IR sensors:
-	  IR_Yaw_right = (atan(l_delta_right/IR_sensor_distance_right)/3.1415926)*180;	
+    IR_Yaw_right = (atan(l_delta_right/IR_sensor_distance_right)/3.1415926)*180;	
     // Calculate the angle relative the corridor walls, based on the left side IR sensors:
     IR_Yaw_left = (atan(l_delta_left/IR_sensor_distance_left)/3.1415926)*180;
     
@@ -494,7 +502,14 @@ void calculate_p_part()
 
 void calculate_alpha()
 {
-    alpha = Kp*p_part + Kd*Yaw_rad;
+    if ((IR_Yaw_right - IR_Yaw_left > 15) || (IR_Yaw_right - IR_Yaw_left < -15)) // if they differ to much we're probably just on our way out of a juction and should not do any adjustments
+    {
+        alpha = 0;
+    }
+    else
+    {
+        alpha = Kp*p_part + Kd*Yaw_rad;
+    }
 }
 
 void update_state()
@@ -543,8 +558,8 @@ void update_state()
             && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE)) 
             || ((IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
             && (IR_3 > CORRIDOR_SIDE_DISTANCE) && (IR_4 > CORRIDOR_SIDE_DISTANCE)) 
-            || ((IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
-            && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))) 
+            || ((IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
+            && (IR_3 > CORRIDOR_SIDE_DISTANCE) && (IR_4 > CORRIDOR_SIDE_DISTANCE))) 
             {
                 AUTO_STATE = INTO_JUNCTION;
                 cycle_count = 0;
