@@ -23,6 +23,7 @@ enum STATE
     JUNCTION_C = 10,
     JUNCTION_D = 11,
     OUT_OF_JUNCTION = 12,
+    DETERMINE_IF_TARGET = 13,
 };
 
 #endif

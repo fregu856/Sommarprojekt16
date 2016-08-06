@@ -33,6 +33,9 @@ mode = 0
 latest_video_frame = []
 cycles_without_web_contact = 0
 
+red_percentage = 0
+
+
 # dictionary for converting serial incoming data regarding the current manual state:
 manual_states = {
     0: "Stop",
@@ -175,6 +178,7 @@ def web_thread():
             stop_runaway_robot()
         # delay for 0.1 sec (for ~ 10 Hz loop frequency):
         time.sleep(0.1) 
+        print(red_percentage)
         
 def serial_thread():
     # all global variables this function can modify:
@@ -261,6 +265,7 @@ def gen_normal():
             yield (b'--frame\nContent-Type: image/jpeg\n\n' + frame + b'\n')
                 
 def gen_mask():
+    global red_percentage
     while 1:
         if len(latest_video_frame) > 0: # if we have started receiving actual frames:
             # convert the latest read video frame to HSV (Hue, Saturation, Value) format:
@@ -272,6 +277,9 @@ def gen_mask():
             
             # mask the image according to the 'redness' filter: (pixels which are IN the 'redness' range specified above will be made white, pixels which are outside the 'redness' range (which aren't red enough) will be made black)
             range_mask = cv2.inRange(hsv, lower_red, upper_red)
+               
+            no_of_red_pixels = np.nonzero(range_mask)[0].size # np.nonzero(range_mask) is in this case a tuple where the first element is an array containing all row/column indices of the non-zero elements (pixels), and the second is an array containing all column/row indices. Number of non-zero elements (pixels) thus = size of the first element = size of the second element
+            red_percentage = np.float( (np.float(no_of_red_pixels) / np.float(640*480))*100 )
             
             # convert the result to jpg format:
             ret, jpg = cv2.imencode(".jpg", range_mask)

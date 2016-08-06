@@ -32,14 +32,16 @@ float p_part;
 float alpha;
 
 uint8_t Kp = 4;
-uint16_t Kd = 350;
+uint16_t Kd = 250;
 
 uint8_t manual_state = stop_int;
 uint8_t mode = manual_int;
 STATE AUTO_STATE = CORRIDOR; // current auto state is "CORRIDOR" per default
 
-#define CORRIDOR_SIDE_DISTANCE 25 // Distance for determining whether in corridor or not
-#define DEAD_END_DISTANCE 15 // Distance to the front wall when it's time to turn around in a dead end
+int next_direction = -1;
+
+#define CORRIDOR_SIDE_DISTANCE 35 // Distance for determining whether in corridor or not
+#define DEAD_END_DISTANCE 12 // Distance to the front wall when it's time to turn around in a dead end
 
 int cycle_count; // counter that keeps track of the number of cycles (loops) in a specific state
 int startup_counter; // counter for giving the sensor values some time to get to normal after start of auto mode
@@ -539,14 +541,25 @@ void update_state()
             && (IR_2 < CORRIDOR_SIDE_DISTANCE) && (IR_3 < CORRIDOR_SIDE_DISTANCE)
             && (IR_4 < CORRIDOR_SIDE_DISTANCE))
             {
-                AUTO_STATE = DEAD_END;
+                AUTO_STATE = DETERMINE_IF_TARGET;
                 cycle_count = 0;
             }
             
             if ((IR_1 > CORRIDOR_SIDE_DISTANCE) || (IR_2 > CORRIDOR_SIDE_DISTANCE) 
-            || (IR_3 > CORRIDOR_SIDE_DISTANCE) || (IR_4 > CORRIDOR_SIDE_DISTANCE))
+            || (IR_3 > CORRIDOR_SIDE_DISTANCE - 10) || (IR_4 > CORRIDOR_SIDE_DISTANCE))
             {
                 AUTO_STATE = OUT_OF_CORRIDOR;
+                cycle_count = 0;
+            }
+            
+			break;
+		}
+        
+		case DETERMINE_IF_TARGET:
+		{
+			if (cycle_count > 20)
+            {
+                AUTO_STATE = DEAD_END;
                 cycle_count = 0;
             }
             
@@ -558,9 +571,9 @@ void update_state()
             if (((IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
             && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE)) 
             || ((IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
-            && (IR_3 > CORRIDOR_SIDE_DISTANCE) && (IR_4 > CORRIDOR_SIDE_DISTANCE)) 
+            && (IR_3 > CORRIDOR_SIDE_DISTANCE-10) && (IR_4 > CORRIDOR_SIDE_DISTANCE)) 
             || ((IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
-            && (IR_3 > CORRIDOR_SIDE_DISTANCE) && (IR_4 > CORRIDOR_SIDE_DISTANCE))) 
+            && (IR_3 > CORRIDOR_SIDE_DISTANCE-10) && (IR_4 > CORRIDOR_SIDE_DISTANCE))) 
             {
                 AUTO_STATE = INTO_JUNCTION;
                 cycle_count = 0;
@@ -591,7 +604,7 @@ void update_state()
             
             else if ((cycle_count > 20) && (IR_0 < CORRIDOR_SIDE_DISTANCE)
             && (IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
-            && (IR_3 > CORRIDOR_SIDE_DISTANCE) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
+            && (IR_3 > CORRIDOR_SIDE_DISTANCE-10) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
             {
                 AUTO_STATE = JUNCTION_A_L;
                 cycle_count = 0;
@@ -599,7 +612,7 @@ void update_state()
             
             else if ((cycle_count > 20) && (IR_0 > CORRIDOR_SIDE_DISTANCE)
             && (IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
-            && (IR_3 > CORRIDOR_SIDE_DISTANCE) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
+            && (IR_3 > CORRIDOR_SIDE_DISTANCE-10) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
             {
                 AUTO_STATE = JUNCTION_B_L;
                 cycle_count = 0;
@@ -615,7 +628,7 @@ void update_state()
             
             else if ((cycle_count > 20) && (IR_0 < CORRIDOR_SIDE_DISTANCE)
             && (IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
-            && (IR_3 > CORRIDOR_SIDE_DISTANCE) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
+            && (IR_3 > CORRIDOR_SIDE_DISTANCE-10) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
             {
                 AUTO_STATE = JUNCTION_C;
                 cycle_count = 0;
@@ -626,7 +639,7 @@ void update_state()
         
         case JUNCTION_A_R:
         {
-            if ((IR_0 > 40) && (IR_1> 20) && (IR_2 > 20))
+            if ((IR_0 > 35) && ((IR_1> 30) || (IR_2 > 30)))
             {
                 AUTO_STATE = OUT_OF_JUNCTION;
                 cycle_count = 0;
@@ -637,7 +650,7 @@ void update_state()
         
         case JUNCTION_A_L:
         {
-            if ((IR_0 > 40) && (IR_3 > 20) && (IR_4 > 20))
+            if ((IR_0 > 35) && ((IR_3 > 30) || (IR_4 > 30)))
             {
                 AUTO_STATE = OUT_OF_JUNCTION;
                 cycle_count = 0;
@@ -648,18 +661,18 @@ void update_state()
         
         case JUNCTION_B_R:
         {
-            if ((IR_0 > 30) && (IR_1 > 30) && (IR_2 > 30) && (IR_3 > 30) && (IR_4 > 30))
+            if ((IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
+            && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))
             {
-                AUTO_STATE = OUT_OF_JUNCTION;
+                AUTO_STATE = CORRIDOR;
                 cycle_count = 0;
             }
-            
             break;
         }
         
         case JUNCTION_B_L:
         {
-            if ((IR_0 > 30) && (IR_1 > 30) && (IR_2 > 30) && (IR_3 > 30) && (IR_4 > 30))
+            if ((IR_0 > 35) && ((IR_1 > 30) || (IR_2 > 30)) && ((IR_3 > 30) || (IR_4 > 30)))
             {
                 AUTO_STATE = OUT_OF_JUNCTION;
                 cycle_count = 0;
@@ -670,7 +683,7 @@ void update_state()
         
         case JUNCTION_C:
         {
-            if ((IR_0 > 40) && (IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE))
+            if ((IR_0 > 35) && (IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE))
             {
                 AUTO_STATE = OUT_OF_JUNCTION;
                 cycle_count = 0;
@@ -688,7 +701,7 @@ void update_state()
         case OUT_OF_JUNCTION:
         {
             if ((IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
-            && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))
+            && (IR_3 < CORRIDOR_SIDE_DISTANCE - 10) && (IR_4 < CORRIDOR_SIDE_DISTANCE))
             {
                 AUTO_STATE = CORRIDOR;
                 cycle_count = 0;
@@ -711,6 +724,7 @@ void run_state()
         {
             move_right();
             ++cycle_count;
+
             break;
         }
         
@@ -730,12 +744,19 @@ void run_state()
 			
         case INTO_JUNCTION:
         {
-            move_forward_with_control(100, 0);
+            move_forward_with_control(110, 0);
             ++cycle_count;
             break;
         }
         
         case DETERMINE_JUNCTION:
+        { 
+            stop();
+            ++cycle_count;
+            break;
+        }
+        
+        case DETERMINE_IF_TARGET:
         { 
             stop();
             ++cycle_count;
