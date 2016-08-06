@@ -85,6 +85,7 @@
                             
                             <p>Current Kp: <span id="Kp"></span> </p>
                             <p>Current Kd: <span id="Kd"></span> </p> 
+                            <p>Red percentage: <span id="red_percentage"></span> </p>  
                         </div>
                     </div>
                     
@@ -127,7 +128,7 @@
                             </br>
                             
                             <p>Current manual state: <span id="manual_state"></span> </p>
-                            <p>Current mode: <span id="mode"></span> </p> 
+                            <p>Current mode: <span id="mode"></span> </p>                           
                             
                             <br />
                         </div>
@@ -779,6 +780,8 @@
 
             document.getElementById("Kp").innerHTML = sent_dict["Kp"];
             document.getElementById("Kd").innerHTML = sent_dict["Kd"];
+            
+            document.getElementById("red_percentage").innerHTML = sent_dict["red_percentage"];
             
             stored_state = document.getElementById("state_table_1").innerHTML;
             new_state = sent_dict["AUTO_STATE"];
