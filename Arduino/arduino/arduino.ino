@@ -34,11 +34,23 @@ float alpha;
 uint8_t Kp = 4;
 uint16_t Kd = 250;
 
+uint8_t red_percentage = 0;
+
 uint8_t manual_state = stop_int;
 uint8_t mode = manual_int;
 STATE AUTO_STATE = CORRIDOR; // current auto state is "CORRIDOR" per default
 
 int next_direction = -1;
+
+
+//////
+
+int red_counter = 0;
+int red_sum = 0;
+float red_average;
+
+//////
+
 
 #define CORRIDOR_SIDE_DISTANCE 35 // Distance for determining whether in corridor or not
 #define DEAD_END_DISTANCE 12 // Distance to the front wall when it's time to turn around in a dead end
@@ -179,8 +191,8 @@ void move_backward()
   digitalWrite(IN1_L, LOW);
   digitalWrite(IN2_L, HIGH);
  
-  analogWrite(EN_R, 150); // motor speed right
-  analogWrite(EN_L, 150); // motor speed left 
+  analogWrite(EN_R, 100); // motor speed right
+  analogWrite(EN_L, 100); // motor speed left 
 }
 
 void move_right()
@@ -260,7 +272,7 @@ void read_serial()
 {
     // (the RPI always send the same number of bytes once it sends something, eventhough there's never more than three data bytes that actually should be read. We do this in order to get a fix protocol, which just makes life easier IMO)
     int no_of_bytes_waiting = Serial.available();
-    if (no_of_bytes_waiting > 6) // the RPI sends 7 bytes at the time (5 data, 2 control)
+    if (no_of_bytes_waiting > 7) // the RPI sends 8 bytes at the time (6 data, 2 control)
     {
         // read the first byte:
         uint8_t first_byte = Serial.read();
@@ -274,13 +286,14 @@ void read_serial()
             uint8_t Kp_byte = Serial.read();
             uint8_t Kd_low_byte = Serial.read();
             uint8_t Kd_high_byte = Serial.read();
+            uint8_t red_percentage_byte= Serial.read();
             
             // read the received checksum:
             uint8_t checksum = Serial.read();
             
             // calculate checksum for the received data bytes:
             uint8_t calc_checksum = manual_state_byte + mode_byte + Kp_byte + 
-                Kd_low_byte + Kd_high_byte;
+                Kd_low_byte + Kd_high_byte + red_percentage_byte;
                 
             // update the variables with the read serial data only if the checksums match:
             if (calc_checksum == checksum)
@@ -300,6 +313,7 @@ void read_serial()
                         mode = mode_byte;
                         AUTO_STATE = CORRIDOR;
                     }
+                    
                     else
                     {
                         mode = mode_byte;
@@ -321,7 +335,13 @@ void read_serial()
                     {
                         Kd = Kd_16;
                     }
-                }                
+                }   
+
+                if (red_percentage_byte != 0xFF) // 0xFF (255) is sent if it's not supposed to be read
+                {
+                    red_percentage = red_percentage_byte;
+                }
+                
             }
             
             else // if the checksums doesn't match: something weird has happend during transmission: flush input bufer and stat over
@@ -548,7 +568,7 @@ void update_state()
             if ((IR_1 > CORRIDOR_SIDE_DISTANCE) || (IR_2 > CORRIDOR_SIDE_DISTANCE) 
             || (IR_3 > CORRIDOR_SIDE_DISTANCE - 10) || (IR_4 > CORRIDOR_SIDE_DISTANCE))
             {
-                AUTO_STATE = OUT_OF_CORRIDOR;
+                AUTO_STATE = DETERMINE_IF_SIGN;
                 cycle_count = 0;
             }
             
@@ -593,7 +613,7 @@ void update_state()
         }
         
         case DETERMINE_JUNCTION:
-        {
+        {            
             if ((cycle_count > 20) && (IR_0 < CORRIDOR_SIDE_DISTANCE)
             && (IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
             && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))
@@ -602,7 +622,7 @@ void update_state()
                 cycle_count = 0;
             }
             
-            else if ((cycle_count > 20) && (IR_0 < CORRIDOR_SIDE_DISTANCE)
+            else if ((cycle_count > 20) && (IR_0 < CORRIDOR_SIDE_DISTANCE-10)
             && (IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
             && (IR_3 > CORRIDOR_SIDE_DISTANCE-10) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
             {
@@ -629,13 +649,49 @@ void update_state()
             else if ((cycle_count > 20) && (IR_0 < CORRIDOR_SIDE_DISTANCE)
             && (IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
             && (IR_3 > CORRIDOR_SIDE_DISTANCE-10) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
-            {
-                AUTO_STATE = JUNCTION_C;
-                cycle_count = 0;
+            {   
+                if (next_direction == right_int)
+                {
+                    AUTO_STATE = JUNCTION_C_GO_RIGHT;
+                    cycle_count = 0;
+                }
+                
+                else if (next_direction == left_int)
+                {
+                    AUTO_STATE = JUNCTION_C_GO_LEFT;
+                    cycle_count = 0;
+                }
+
+                else
+                {
+                    break;
+                }
             }
             
             break;
         }
+        
+        case DETERMINE_IF_SIGN:
+        {
+            if (cycle_count > 50)
+            {
+                AUTO_STATE = OUT_OF_CORRIDOR;
+                cycle_count = 0;
+                red_average = red_sum/red_counter;
+                red_sum = 0;
+                red_counter = 0;
+                
+                if (red_average > 10)
+                {
+                    next_direction = right_int;
+                }
+                
+                else
+                {
+                    next_direction = left_int;
+                }
+            }
+        } 
         
         case JUNCTION_A_R:
         {
@@ -681,7 +737,7 @@ void update_state()
             break;
         }
         
-        case JUNCTION_C:
+        case JUNCTION_C_GO_LEFT:
         {
             if ((IR_0 > 35) && (IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE))
             {
@@ -692,9 +748,14 @@ void update_state()
             break;
         }
         
-        case JUNCTION_D:
+        case JUNCTION_C_GO_RIGHT:
         {
-            
+            if ((IR_0 > 35) && (IR_2 < CORRIDOR_SIDE_DISTANCE) && (IR_3 < CORRIDOR_SIDE_DISTANCE))
+            {
+                AUTO_STATE = OUT_OF_JUNCTION;
+                cycle_count = 0;
+            }
+
             break;
         }
         
@@ -791,9 +852,16 @@ void run_state()
             break;
         }
         
-        case JUNCTION_C:
+        case JUNCTION_C_GO_LEFT:
         {
             move_left();
+            ++cycle_count;
+            break;
+        }
+        
+        case JUNCTION_C_GO_RIGHT:
+        {
+            move_right();
             ++cycle_count;
             break;
         }
@@ -811,9 +879,19 @@ void run_state()
             ++cycle_count;
             break;
         }
+        
+        case DETERMINE_IF_SIGN:
+        {
+            stop();
+            ++cycle_count;
+            ++red_counter;
+            red_sum = red_sum + red_percentage;
+            break;
+        }
 		
 		default:
         {
+            stop();
             break;
         }
 	}
@@ -869,11 +947,11 @@ void send_serial()
     uint16_t Kd_two_byte = Kd; // (you don't have to restrict it to fit 16 bits since it can represent such big numbers)
     uint8_t Kd_low_byte = (Kd_two_byte & 0x00FF); // Get the low byte by bitwise AND with 0000 0000 1111 1111
     uint8_t Kd_high_byte = (Kd_two_byte & 0xFF00)/256; // Get the high byte by bitwise AND with 1111 1111 0000 0000 and 8 bit right shift (division by 256)
-    
+   
     // calculate checksum for the data bytes to be sent: (this will obviously overflow the uint8_t sometimes, but that's not a problem since we will do the exact same calculation on the receiving end (on the RPI) and then compare the two)
     uint8_t checksum = IR_0_byte + IR_1_byte + IR_2_byte + IR_3_byte + IR_4_byte + IR_Yaw_right_byte + 
         IR_Yaw_left_byte + Yaw_byte + p_part_byte + alpha_low_byte + alpha_high_byte + Kp_byte + 
-        Kd_low_byte + Kd_high_byte + AUTO_STATE + manual_state + mode;
+        Kd_low_byte + Kd_high_byte + AUTO_STATE + manual_state + mode + red_percentage;
     
     // indicate start of transmission:
     Serial.write(100);
@@ -896,6 +974,7 @@ void send_serial()
     Serial.write(AUTO_STATE);
     Serial.write(manual_state);
     Serial.write(mode);
+    Serial.write(red_percentage);
     
     // send checksum:
     Serial.write(checksum);

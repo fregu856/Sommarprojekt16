@@ -29,12 +29,7 @@ Kd = 0
 AUTO_STATE = 0
 manual_state = 0
 mode = 0
-
-RPI_red_percentage = 0
-RPI_Kp = 4
-RPI_Kd = 250
-RPI_manual_state = 0
-RPI_mode = 5
+red_percentage = 0
 
 latest_video_frame = []
 cycles_without_web_contact = 0
@@ -185,11 +180,11 @@ def web_thread():
         
 def read_serial_thread():
     # all global variables this function can modify:
-    global IR_0, IR_1, IR_2, IR_3, IR_4, IR_Yaw_right, IR_Yaw_left, Yaw, p_part, alpha, Kp, Kd, AUTO_STATE, manual_state, mode
+    global IR_0, IR_1, IR_2, IR_3, IR_4, IR_Yaw_right, IR_Yaw_left, Yaw, p_part, alpha, Kp, Kd, AUTO_STATE, manual_state, mode, red_percentage
 
     while 1:
         no_of_bytes_waiting = serial_port.inWaiting()
-        if no_of_bytes_waiting > 18: # the ardu sends 19 bytes at the time (17 data, 2 control)
+        if no_of_bytes_waiting > 19: # the ardu sends 20 bytes at the time (18 data, 2 control)
             # read the first byte (read 1 byte): (ord: gives the actual value of the byte)
             first_byte = np.uint8(ord(serial_port.read(size = 1))) 
             
@@ -197,7 +192,7 @@ def read_serial_thread():
             if first_byte == 100:
                 serial_data = []
                 # read all data bytes:
-                for counter in range(17): # 17 data bytes is sent from the ardu
+                for counter in range(18): # 18 data bytes is sent from the ardu
                     serial_data.append(ord(serial_port.read(size = 1)))
                 
                 # read the received checksum:
@@ -209,7 +204,7 @@ def read_serial_thread():
                     np.int8(serial_data[5]) + np.int8(serial_data[6]) + np.int8(serial_data[7]) + 
                     np.int8(serial_data[8]) + np.int8(serial_data[9]) + np.int8(serial_data[10]) + 
                     np.uint8(serial_data[11]) + np.uint8(serial_data[12]) + np.uint8(serial_data[13]) + 
-                    np.uint8(serial_data[14]) + np.uint8(serial_data[15]) + np.uint8(serial_data[16]))
+                    np.uint8(serial_data[14]) + np.uint8(serial_data[15]) + np.uint8(serial_data[16]) + np.uint8(serial_data[17]))
 
                 # update the variables with the read serial data only if the checksums match:
                 if calc_checksum == checksum:
@@ -232,6 +227,7 @@ def read_serial_thread():
                     AUTO_STATE = auto_states[int(np.uint8(serial_data[14]))] # look up the received integer in the auto_states dict
                     manual_state = manual_states[int(np.uint8(serial_data[15]))]
                     mode = mode_states[int(np.uint8(serial_data[16]))]
+                    red_percentage = int(np.uint8(serial_data[17]))
                 else: # if the checksums doesn't match: something weird has happened during transmission: flush input buffer and start over
                     serial_port.flushInput()
                     print("Something went wrong in the transaction: checksums didn't match!") 
@@ -248,33 +244,6 @@ def read_serial_thread():
             pass
 
         time.sleep(0.025) # Delay for ~40 Hz loop frequency (faster than the sending frequency)
-    
-def send_serial_thread():
-    while 1:
-        # get manual state, set start byte and set everything else to the maximum number for their data type to mark that they are not to be read:
-        start_byte = np.uint8(100)
-        manual_state_byte = np.uint8(RPI_manual_state)
-        mode_byte = np.uint8(RPI_mode)
-        Kp_byte = np.uint8(RPI_Kp)
-        Kd_two_byte = np.uint16(RPI_Kd)
-        Kd_low_byte = np.uint8((Kd_two_byte & 0x00FF))
-        Kd_high_byte = np.uint8((Kd_two_byte & 0xFF00)/256)
-        
-        # caculate checksum for the data bytes to be sent:
-        checksum = np.uint8(manual_state_byte + mode_byte + Kp_byte + Kd_low_byte + Kd_high_byte)
-        
-        # send all data bytes:
-        serial_port.write(start_byte.tobytes())
-        serial_port.write(manual_state_byte.tobytes())
-        serial_port.write(mode_byte.tobytes())
-        serial_port.write(Kp_byte.tobytes())
-        serial_port.write(Kd_low_byte.tobytes())
-        serial_port.write(Kd_high_byte.tobytes())
-        
-        # send checksum:
-        serial_port.write(checksum.tobytes())
-        
-        time.sleep(0.1) # delay for ~ 10 Hz loop frequency
 
 def gen_normal():
     while 1:
@@ -295,7 +264,6 @@ def gen_normal():
             yield (b'--frame\nContent-Type: image/jpeg\n\n' + frame + b'\n')
                 
 def gen_mask():
-    global red_percentage
     while 1:
         if len(latest_video_frame) > 0: # if we have started receiving actual frames:
             # convert the latest read video frame to HSV (Hue, Saturation, Value) format:
@@ -309,12 +277,41 @@ def gen_mask():
             upper_yellow = np.array([35, 255, 255]) # = [H+20, 100, 100]
             
             # mask the image according to the 'redness' filter: (pixels which are IN the 'redness' range specified above will be made white, pixels which are outside the 'redness' range (which aren't red enough) will be made black)
-#            range_mask = cv2.inRange(hsv, lower_blue, upper_blue)
-            range_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+            range_mask = cv2.inRange(hsv, lower_blue, upper_blue)
+ #           range_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
                
             no_of_red_pixels = np.nonzero(range_mask)[0].size # np.nonzero(range_mask) is in this case a tuple where the first element is an array containing all row/column indices of the non-zero elements (pixels), and the second is an array containing all column/row indices. Number of non-zero elements (pixels) thus = size of the first element = size of the second element
             red_percentage = int( np.float( (np.float(no_of_red_pixels) / np.float(640*480))*100 ) )
 
+            
+            
+            # get manual state, set start byte and set everything else to the maximum number for their data type to mark that they are not to be read:
+            start_byte = np.uint8(100)
+            manual_state = np.uint8(0xFF)
+            mode = np.uint8(0xFF)
+            Kp = np.uint8(0xFF)
+            Kd = np.uint16(0xFFFF)
+            Kd_low = np.uint8((Kd & 0x00FF))
+            Kd_high = np.uint8((Kd & 0xFF00)/256)
+            red_percentage = np.uint8(red_percentage)
+            
+            # caculate checksum for the data bytes to be sent:
+            checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + red_percentage)
+            
+            # send all data bytes:
+            serial_port.write(start_byte.tobytes())
+            serial_port.write(manual_state.tobytes())
+            serial_port.write(mode.tobytes())
+            serial_port.write(Kp.tobytes())
+            serial_port.write(Kd_low.tobytes())
+            serial_port.write(Kd_high.tobytes())
+            serial_port.write(red_percentage.tobytes())
+            
+            # send checksum:
+            serial_port.write(checksum.tobytes())
+            
+            
+            
             # convert the result to jpg format:
             ret, jpg = cv2.imencode(".jpg", range_mask)
             
@@ -329,6 +326,7 @@ def gen_mask():
             # <frame data>
             #
             yield (b'--frame\nContent-Type: image/jpeg\n\n' + frame + b'\n')
+            time.sleep(0.1)
                 
 @app.route("/camera_normal")
 def camera_normal():
@@ -373,9 +371,6 @@ def index():
         thread_read_serial = Thread(target = read_serial_thread)
         thread_read_serial.start()
         
-        # start a thread constantly sending user-input/video-processing data to the arduino:
-        thread_send_serial = Thread(target = send_serial_thread)
-        thread_send_serial.start()
         return render_template("index.html") 
     except Exception as e:
         return render_template("500.html", error = str(e))
@@ -395,9 +390,6 @@ def phone():
         thread_read_serial = Thread(target = read_serial_thread)
         thread_read_serial.start()
         
-        # start a thread constantly sending user-input/video-processing data to the arduino:
-        thread_send_serial = Thread(target = send_serial_thread)
-        thread_send_serial.start()
         return render_template("phone.html") 
     except Exception as e:
         return render_template("500.html", error = str(e))        
@@ -408,19 +400,64 @@ def handle_my_custom_event(sent_dict):
        
 @socketio.on("arrow_event")
 def handle_arrow_event(sent_dict):
-    global RPI_manual_state
     print("Recieved message: " + str(sent_dict["data"]))
-    RPI_manual_state = sent_dict["data"]
+    
+    # get manual state, set start byte and set everything else to the maximum number for their data type to mark that they are not to be read:
+    start_byte = np.uint8(100)
+    manual_state = np.uint8(sent_dict["data"])
+    mode = np.uint8(0xFF)
+    Kp = np.uint8(0xFF)
+    Kd = np.uint16(0xFFFF)
+    Kd_low = np.uint8((Kd & 0x00FF))
+    Kd_high = np.uint8((Kd & 0xFF00)/256)
+    red_percentage = np.uint8(0xFF)
+    
+    # caculate checksum for the data bytes to be sent:
+    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + red_percentage)
+    
+    # send all data bytes:
+    serial_port.write(start_byte.tobytes())
+    serial_port.write(manual_state.tobytes())
+    serial_port.write(mode.tobytes())
+    serial_port.write(Kp.tobytes())
+    serial_port.write(Kd_low.tobytes())
+    serial_port.write(Kd_high.tobytes())
+    serial_port.write(red_percentage.tobytes())
+    
+    # send checksum:
+    serial_port.write(checksum.tobytes())
     
 @socketio.on("mode_event")
 def handle_mode_event(sent_dict):
-    global RPI_mode
     print("Recieved message: " + str(sent_dict["data"]))
-    RPI_mode = sent_dict["data"]
+    
+    # get mode state, set start byte and set everything else to the maximum number for their data type to mark that they are not to be read:
+    start_byte = np.uint8(100)
+    manual_state = np.uint8(0xFF)
+    mode = np.uint8(sent_dict["data"])
+    Kp = np.uint8(0xFF)
+    Kd = np.uint16(0xFFFF)
+    Kd_low = np.uint8((Kd & 0x00FF))
+    Kd_high = np.uint8((Kd & 0xFF00)/256)
+    red_percentage = np.uint8(0xFF)
+    
+    # caculate checksum for the data bytes to be sent:
+    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + red_percentage)
+    
+    # send all data bytes:
+    serial_port.write(start_byte.tobytes())
+    serial_port.write(manual_state.tobytes())
+    serial_port.write(mode.tobytes())
+    serial_port.write(Kp.tobytes())
+    serial_port.write(Kd_low.tobytes())
+    serial_port.write(Kd_high.tobytes())
+    serial_port.write(red_percentage.tobytes())
+    
+    # send checksum:
+    serial_port.write(checksum.tobytes())
     
 @socketio.on("parameters_event")
 def handle_parameters_event(sent_dict):
-    global RPI_Kp, RPI_Kd
     Kp_input = sent_dict["Kp"]
     Kd_input = sent_dict["Kd"]   
     print("Recieved Kp: " + Kp_input)
@@ -429,10 +466,41 @@ def handle_parameters_event(sent_dict):
     # check parameter input and set Kp, Kd to the parameter input only it it is non-empty and valid:
     Kp_input = check_parameter_input(Kp_input) # After this, Kp_input is non-empty only if the user typed a positive (>= 0) integer into the Kp field (and thus we should send it to the arduino)
     Kd_input = check_parameter_input(Kd_input)      
-    if Kp_input or Kp_input == 0: # if valid, non-empty input:
-        RPI_Kp = Kp_input
-    if Kd_input or Kd_input == 0: # if valid, non-empty input:
-        RPI_Kd = Kd_input
+    if (Kp_input or Kp_input == 0) and (Kd_input or Kd_input == 0): # if valid, non-empty input for both Kp and Kd: send both Kp and Kd
+        Kp = np.uint8(Kp_input)
+        Kd = np.uint16(Kd_input)
+    elif Kp_input or Kp_input == 0: # if only Kp:
+        Kp = np.uint8(Kp_input)
+        Kd = np.uint16(0xFFFF)
+    elif Kd_input or Kd_input == 0: # if only Kd:
+        Kp = np.uint8(0xFF)
+        Kd = np.uint16(Kd_input)
+    else: # if neither is valid/non-empty:
+        Kp = np.uint8(0xFF)
+        Kd = np.uint16(0xFFFF)
+    Kd_low = np.uint8((Kd & 0x00FF))
+    Kd_high = np.uint8((Kd & 0xFF00)/256)
+    
+    # set start byte and set everything else to the maximum number for their data type to mark that they are not to be read:
+    start_byte = np.uint8(100)
+    manual_state = np.uint8(0xFF)
+    mode = np.uint8(0xFF)
+    red_percentage = np.uint8(0xFF)
+    
+    # caculate checksum for the data bytes to be sent:
+    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + red_percentage)
+    
+    # send all data bytes:
+    serial_port.write(start_byte.tobytes())
+    serial_port.write(manual_state.tobytes())
+    serial_port.write(mode.tobytes())
+    serial_port.write(Kp.tobytes())
+    serial_port.write(Kd_low.tobytes())
+    serial_port.write(Kd_high.tobytes())
+    serial_port.write(red_percentage.tobytes())
+    
+    # send checksum:
+    serial_port.write(checksum.tobytes())
     
 @socketio.on("control_event")
 def handle_control_event(sent_dict):
