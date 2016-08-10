@@ -550,6 +550,7 @@ void update_state()
             && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))
             {
                 AUTO_STATE = CORRIDOR;
+                cycle_count = 0;
             }
             
             break;
@@ -750,7 +751,7 @@ void update_state()
         
         case JUNCTION_C_GO_RIGHT:
         {
-            if ((IR_0 > 35) && (IR_2 < CORRIDOR_SIDE_DISTANCE) && (IR_3 < CORRIDOR_SIDE_DISTANCE))
+            if ((IR_0 > 35) && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))
             {
                 AUTO_STATE = OUT_OF_JUNCTION;
                 cycle_count = 0;
