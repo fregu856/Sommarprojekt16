@@ -1,5 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, Response
-import numbers
+from flask import Flask, render_template, Response
 from flask_socketio import SocketIO, emit
 import serial
 from picamera.array import PiRGBArray
@@ -7,9 +6,9 @@ from picamera import PiCamera
 import time
 import cv2
 import numpy as np
-import time
 from threading import Thread
 
+# data that are being received from the arduino and sent to the web page:
 IR_0 = 0
 IR_1 = 0
 IR_2 = 0
@@ -29,7 +28,6 @@ blue_percentage = 0
 
 latest_video_frame = []
 cycles_without_web_contact = 0
-
 
 # dictionary for converting serial incoming data regarding the current manual state:
 manual_states = {
@@ -52,12 +50,11 @@ auto_states = {
     8: "JUNCTION_B_R",
     9: "JUNCTION_B_L",
     10: "JUNCTION_C_GO_LEFT",
-    11: "JUNCTION_D",
-    12: "OUT_OF_JUNCTION",
-    13: "DETERMINE_IF_SIGN",
-    14: "JUNCTION_C_GO_RIGHT",
-    15: "END_OF_COURSE",
-    16: "OUT_OF_DEAD_END"
+    11: "OUT_OF_JUNCTION",
+    12: "DETERMINE_IF_SIGN",
+    13: "JUNCTION_C_GO_RIGHT",
+    14: "END_OF_COURSE",
+    15: "OUT_OF_DEAD_END"
 }
 
 # dictionary for converting serial incoming data regarding the current mode:
@@ -66,36 +63,27 @@ mode_states = {
     6: "Auto"
 }
 
-# stop = 0
-# forward = 1
-# backward = 2
-# right = 3
-# left = 4
-# manual = 5
-# auto = 6
-# Kp and kd = 7
-# Only Kp = 8
-# Only Kd = 9
-
-# 9600 is the baudrate, should match serial baudrate in arduino
+# initialize serial communication with the arduino: (9600 is the baudrate, should match serial baudrate in arduino)
 serial_port = serial.Serial("/dev/ttyACM0", 9600) 
 
+# initialize the web server:
 app = Flask(__name__)
-socketio = SocketIO(app, async_mode = "threading") # Without "async_mode = "threading", sending stuff to the cliend (via socketio) doesn't work!
+socketio = SocketIO(app, async_mode = "threading") # without "async_mode = "threading", sending stuff to the cliend (via socketio) doesn't work!
 
+# check user input for new Kp and/or Kd values:
 def check_parameter_input(value):    
     if value:
         try:
             value = int(value)
         except:
-            value = "" # value must be an integer! (so don't send the parameter)
+            value = "" # value must be an integer! (so don't send the parameter to the arduino)
             return value
         else: # if conversion was successful:
             if value < 0:
-                value = "" # value must be positive! (so don't send the parameter)
+                value = "" # value must be positive! (so don't send the parameter to the arduino)
                 return value
             else: # if positive integer
-                return value        
+                return value # (everything is OK, send the parameter)        
     else: # if value == 0 or value is empty (if the parameter field was left empty)
         return value
         
@@ -119,7 +107,7 @@ def video_thread():
     generator_output = PiRGBArray(camera, size=(640, 480))
     video_frame_generator = camera.capture_continuous(generator_output, format="bgr", use_video_port=True)
     
-    # allow the camera to warmup:
+    # allow the camera to warm up:
     time.sleep(0.1)
     
     for item in video_frame_generator:
@@ -134,6 +122,7 @@ def video_thread():
         # delay for 0.033 sec (for ~ 30 Hz loop frequency):
         time.sleep(0.033) 
         
+# stop the robot if the wifi connection is lost: (by telling the arduino to do so over serial)
 def stop_runaway_robot():
     # set mode to manual and manual_state to stop: (and everything else to the maximum number for their data type to mark that they are not to be read)
     start_byte = np.uint8(100)
@@ -200,7 +189,7 @@ def read_serial_thread():
 
                 # update the variables with the read serial data only if the checksums match:
                 if calc_checksum == checksum:
-                    IR_0 = int(np.uint8(serial_data[0])) # (int() is needed to convert it something that can be sent to the webpage) 
+                    IR_0 = int(np.uint8(serial_data[0])) # (int() is needed to convert it to something that can be sent to the webpage) 
                     IR_1 = int(np.uint8(serial_data[1]))
                     IR_2 = int(np.uint8(serial_data[2]))
                     IR_3 = int(np.uint8(serial_data[3]))
@@ -222,14 +211,7 @@ def read_serial_thread():
                     blue_percentage = int(np.uint8(serial_data[17]))
                 else: # if the checksums doesn't match: something weird has happened during transmission: flush input buffer and start over
                     serial_port.flushInput()
-                    print("Something went wrong in the transaction: checksums didn't match!") 
-                    print("Something went wrong in the transaction: checksums didn't match!")   
-                    print("Something went wrong in the transaction: checksums didn't match!")   
-                    print("Something went wrong in the transaction: checksums didn't match!")   
-                    print("Something went wrong in the transaction: checksums didn't match!")   
-                    print("Something went wrong in the transaction: checksums didn't match!")   
-                    print("Something went wrong in the transaction: checksums didn't match!")   
-                    print("Something went wrong in the transaction: checksums didn't match!")                       
+                    print("Something went wrong in the transaction: checksums didn't match!")                      
             else: # if first byte isn't the start byte: we're not in sync: just read the next byte until we get in sync (until we reach the start byte)
                 pass
         else: # if not enough bytes for entire transmission, just wait for more data:
@@ -261,22 +243,18 @@ def gen_mask():
             # convert the latest read video frame to HSV (Hue, Saturation, Value) format:
             hsv = cv2.cvtColor(latest_video_frame, cv2.COLOR_BGR2HSV)
             
-            # specify lower and upper 'redness' filter boundries:
+            # specify lower and upper "blueness" filter boundries:
             lower_blue = np.array([100, 50, 50]) # = [H-20, 100, 100]
             upper_blue = np.array([140, 255, 255]) # = [H+20, 100, 100]
             
-            lower_yellow = np.array([25, 100, 100]) # = [H-20, 100, 100]
-            upper_yellow = np.array([35, 255, 255]) # = [H+20, 100, 100]
-            
-            # mask the image according to the 'redness' filter: (pixels which are IN the 'redness' range specified above will be made white, pixels which are outside the 'redness' range (which aren't red enough) will be made black)
+            # mask the image according to the "blueness" filter: (pixels which are IN the "blueness" range specified above will be made white, pixels which are outside the "blueness" range (which aren't blue enough) will be made black)
             range_mask = cv2.inRange(hsv, lower_blue, upper_blue)
                
-            no_of_red_pixels = np.nonzero(range_mask)[0].size # np.nonzero(range_mask) is in this case a tuple where the first element is an array containing all row/column indices of the non-zero elements (pixels), and the second is an array containing all column/row indices. Number of non-zero elements (pixels) thus = size of the first element = size of the second element
-            blue_percentage = int( np.float( (np.float(no_of_red_pixels) / np.float(640*480))*100 ) )
-
+            no_of_blue_pixels = np.nonzero(range_mask)[0].size # np.nonzero(range_mask) is in this case a tuple where the first element is an array containing all row/column indices of the non-zero elements (pixels), and the second is an array containing all column/row indices. Number of non-zero elements (pixels) thus = size of the first element = size of the second element
+            blue_percentage = int( np.float( (np.float(no_of_blue_pixels) / np.float(640*480))*100 ) )
             
-            
-            # get manual state, set start byte and set everything else to the maximum number for their data type to mark that they are not to be read:
+            # send the "blue_percentage" to the arduino:
+            # # set start byte and set everything else to the maximum number for their data type to mark that they are not to be read:
             start_byte = np.uint8(100)
             manual_state = np.uint8(0xFF)
             mode = np.uint8(0xFF)
@@ -286,10 +264,10 @@ def gen_mask():
             Kd_high = np.uint8((Kd & 0xFF00)/256)
             blue_percentage = np.uint8(blue_percentage)
             
-            # caculate checksum for the data bytes to be sent:
+            # # caculate checksum for the data bytes to be sent:
             checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + blue_percentage)
             
-            # send all data bytes:
+            # # send all data bytes:
             serial_port.write(start_byte.tobytes())
             serial_port.write(manual_state.tobytes())
             serial_port.write(mode.tobytes())
@@ -298,10 +276,8 @@ def gen_mask():
             serial_port.write(Kd_high.tobytes())
             serial_port.write(blue_percentage.tobytes())
             
-            # send checksum:
+            # # send checksum:
             serial_port.write(checksum.tobytes())
-            
-            
             
             # convert the result to jpg format:
             ret, jpg = cv2.imencode(".jpg", range_mask)
@@ -310,7 +286,7 @@ def gen_mask():
             frame = jpg.tobytes()
             
             # yield the frame:
-            # what we yield looks like this, but in binary: (binary data is amust for multipart)
+            # what we yield looks like this, but in binary: (binary data is a must for multipart)
             # --frame
             # Content-Type: image/jpeg
             #
@@ -389,6 +365,7 @@ def phone():
 def handle_my_custom_event(sent_dict):
     print("Recieved message: " + sent_dict["data"])
        
+# handle data which is sent from the web page when the user are manually controlling the robot, and send it to the arduino: (the user is either pressing the direction arrows or using WASD)
 @socketio.on("arrow_event")
 def handle_arrow_event(sent_dict):
     print("Recieved message: " + str(sent_dict["data"]))
@@ -418,6 +395,7 @@ def handle_arrow_event(sent_dict):
     # send checksum:
     serial_port.write(checksum.tobytes())
     
+# handle data which is sent from the web page when the user are switching mode (manual or auto), and send i to the arduino:
 @socketio.on("mode_event")
 def handle_mode_event(sent_dict):
     print("Recieved message: " + str(sent_dict["data"]))
@@ -447,6 +425,7 @@ def handle_mode_event(sent_dict):
     # send checksum:
     serial_port.write(checksum.tobytes())
     
+# handle data which is sent from the web page when the user are changing the control parameters, and send it to the arduino:
 @socketio.on("parameters_event")
 def handle_parameters_event(sent_dict):
     Kp_input = sent_dict["Kp"]
@@ -492,7 +471,8 @@ def handle_parameters_event(sent_dict):
     
     # send checksum:
     serial_port.write(checksum.tobytes())
-    
+
+# reset the control counter everytime we receive the control message from the web page: (if this counter ever gets to big, we know that we have lost wifi contact)
 @socketio.on("control_event")
 def handle_control_event(sent_dict):
     global cycles_without_web_contact
