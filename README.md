@@ -1,5 +1,8 @@
 # Sommarprojekt16 (Summer project 16)
 
+Video:
+https://youtu.be/povGte7K8o4
+
 Things/links that I have used or found useful (in no particular order):
 
 Flask (back-end python):
