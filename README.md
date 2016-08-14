@@ -5,17 +5,6 @@ Personal summer project.
 Video:
 https://youtu.be/povGte7K8o4
 
-Pictures from the build:
-https://goo.gl/photos/z78dbTpEZ5kwjqneA
-
-Main hardware:
-1x Arduino Uno
-1x Raspberry Pi 3 Model B
-1x Raspberry Pi Camera Module v2
-1x DFRobot 4WD Arduino Mobile Platform (http://www.robotshop.com/eu/en/dfrobot-4wd-arduino-mobile-platform.html)
-2x L298 Dual H-Bridge DC Motor Controller (http://www.robotshop.com/eu/en/l298-dual-h-bridge-dc-motor-controller.html)
-5x Sharp GP2Y0A21YK0F IR Range Sensor - 10cm to 80cm (http://www.robotshop.com/eu/en/sharp-gp2y0a21yk0f-ir-range-sensor.html)
-
 Things/links that I have used or found useful (in no particular order):
 
 Flask (back-end python):
