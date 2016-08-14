@@ -1,4 +1,4 @@
-# Rasperino - Autonomous/Web Controlled Raspberry Pi & Arduino Robot (Sommarprojekt16)
+# Sommarprojekt16 (Summer project 16)
 
 Links that I have used:
 
