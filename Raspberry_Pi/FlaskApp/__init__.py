@@ -1,7 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, Response
-from dbconnect import connect
-import gc   # Garbage collection
-from datetime import date
 import numbers
 from flask_socketio import SocketIO, emit
 import serial
@@ -11,7 +8,6 @@ import time
 import cv2
 import numpy as np
 import time
-
 from threading import Thread
 
 IR_0 = 0
@@ -29,7 +25,7 @@ Kd = 0
 AUTO_STATE = 0
 manual_state = 0
 mode = 0
-red_percentage = 0
+blue_percentage = 0
 
 latest_video_frame = []
 cycles_without_web_contact = 0
@@ -55,17 +51,13 @@ auto_states = {
     7: "JUNCTION_A_L",
     8: "JUNCTION_B_R",
     9: "JUNCTION_B_L",
-    10: "JUNCTION_C",
+    10: "JUNCTION_C_GO_LEFT",
     11: "JUNCTION_D",
     12: "OUT_OF_JUNCTION",
-    13: 13,
-    14: 14,
-    15: 15,
-    16: 16,
-    17: 17,
-    18: 18,
-    19: 19,
-    20: 20
+    13: "DETERMINE_IF_SIGN",
+    14: "JUNCTION_C_GO_RIGHT",
+    15: "END_OF_COURSE",
+    16: "OUT_OF_DEAD_END"
 }
 
 # dictionary for converting serial incoming data regarding the current mode:
@@ -171,7 +163,7 @@ def web_thread():
     
     while 1:
         # send all data for display on the web page:
-        socketio.emit("new_data", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "Kp": Kp, "Kd": Kd, "AUTO_STATE": AUTO_STATE, "manual_state": manual_state, "mode": mode, "red_percentage": red_percentage})
+        socketio.emit("new_data", {"IR_0": IR_0, "IR_1": IR_1, "IR_2": IR_2, "IR_3": IR_3, "IR_4": IR_4, "IR_Yaw_right": IR_Yaw_right, "IR_Yaw_left": IR_Yaw_left, "Yaw": Yaw, "p_part": p_part, "alpha": alpha, "Kp": Kp, "Kd": Kd, "AUTO_STATE": AUTO_STATE, "manual_state": manual_state, "mode": mode, "blue_percentage": blue_percentage})
         cycles_without_web_contact += 1
         if cycles_without_web_contact > 5: # if we havn't had wifi contact for ~ 0.5 sec: stop the robot!
             stop_runaway_robot()
@@ -180,7 +172,7 @@ def web_thread():
         
 def read_serial_thread():
     # all global variables this function can modify:
-    global IR_0, IR_1, IR_2, IR_3, IR_4, IR_Yaw_right, IR_Yaw_left, Yaw, p_part, alpha, Kp, Kd, AUTO_STATE, manual_state, mode, red_percentage
+    global IR_0, IR_1, IR_2, IR_3, IR_4, IR_Yaw_right, IR_Yaw_left, Yaw, p_part, alpha, Kp, Kd, AUTO_STATE, manual_state, mode, blue_percentage
 
     while 1:
         no_of_bytes_waiting = serial_port.inWaiting()
@@ -227,7 +219,7 @@ def read_serial_thread():
                     AUTO_STATE = auto_states[int(np.uint8(serial_data[14]))] # look up the received integer in the auto_states dict
                     manual_state = manual_states[int(np.uint8(serial_data[15]))]
                     mode = mode_states[int(np.uint8(serial_data[16]))]
-                    red_percentage = int(np.uint8(serial_data[17]))
+                    blue_percentage = int(np.uint8(serial_data[17]))
                 else: # if the checksums doesn't match: something weird has happened during transmission: flush input buffer and start over
                     serial_port.flushInput()
                     print("Something went wrong in the transaction: checksums didn't match!") 
@@ -278,10 +270,9 @@ def gen_mask():
             
             # mask the image according to the 'redness' filter: (pixels which are IN the 'redness' range specified above will be made white, pixels which are outside the 'redness' range (which aren't red enough) will be made black)
             range_mask = cv2.inRange(hsv, lower_blue, upper_blue)
- #           range_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
                
             no_of_red_pixels = np.nonzero(range_mask)[0].size # np.nonzero(range_mask) is in this case a tuple where the first element is an array containing all row/column indices of the non-zero elements (pixels), and the second is an array containing all column/row indices. Number of non-zero elements (pixels) thus = size of the first element = size of the second element
-            red_percentage = int( np.float( (np.float(no_of_red_pixels) / np.float(640*480))*100 ) )
+            blue_percentage = int( np.float( (np.float(no_of_red_pixels) / np.float(640*480))*100 ) )
 
             
             
@@ -293,10 +284,10 @@ def gen_mask():
             Kd = np.uint16(0xFFFF)
             Kd_low = np.uint8((Kd & 0x00FF))
             Kd_high = np.uint8((Kd & 0xFF00)/256)
-            red_percentage = np.uint8(red_percentage)
+            blue_percentage = np.uint8(blue_percentage)
             
             # caculate checksum for the data bytes to be sent:
-            checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + red_percentage)
+            checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + blue_percentage)
             
             # send all data bytes:
             serial_port.write(start_byte.tobytes())
@@ -305,7 +296,7 @@ def gen_mask():
             serial_port.write(Kp.tobytes())
             serial_port.write(Kd_low.tobytes())
             serial_port.write(Kd_high.tobytes())
-            serial_port.write(red_percentage.tobytes())
+            serial_port.write(blue_percentage.tobytes())
             
             # send checksum:
             serial_port.write(checksum.tobytes())
@@ -410,10 +401,10 @@ def handle_arrow_event(sent_dict):
     Kd = np.uint16(0xFFFF)
     Kd_low = np.uint8((Kd & 0x00FF))
     Kd_high = np.uint8((Kd & 0xFF00)/256)
-    red_percentage = np.uint8(0xFF)
+    blue_percentage = np.uint8(0xFF)
     
     # caculate checksum for the data bytes to be sent:
-    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + red_percentage)
+    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + blue_percentage)
     
     # send all data bytes:
     serial_port.write(start_byte.tobytes())
@@ -422,7 +413,7 @@ def handle_arrow_event(sent_dict):
     serial_port.write(Kp.tobytes())
     serial_port.write(Kd_low.tobytes())
     serial_port.write(Kd_high.tobytes())
-    serial_port.write(red_percentage.tobytes())
+    serial_port.write(blue_percentage.tobytes())
     
     # send checksum:
     serial_port.write(checksum.tobytes())
@@ -439,10 +430,10 @@ def handle_mode_event(sent_dict):
     Kd = np.uint16(0xFFFF)
     Kd_low = np.uint8((Kd & 0x00FF))
     Kd_high = np.uint8((Kd & 0xFF00)/256)
-    red_percentage = np.uint8(0xFF)
+    blue_percentage = np.uint8(0xFF)
     
     # caculate checksum for the data bytes to be sent:
-    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + red_percentage)
+    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + blue_percentage)
     
     # send all data bytes:
     serial_port.write(start_byte.tobytes())
@@ -451,7 +442,7 @@ def handle_mode_event(sent_dict):
     serial_port.write(Kp.tobytes())
     serial_port.write(Kd_low.tobytes())
     serial_port.write(Kd_high.tobytes())
-    serial_port.write(red_percentage.tobytes())
+    serial_port.write(blue_percentage.tobytes())
     
     # send checksum:
     serial_port.write(checksum.tobytes())
@@ -485,10 +476,10 @@ def handle_parameters_event(sent_dict):
     start_byte = np.uint8(100)
     manual_state = np.uint8(0xFF)
     mode = np.uint8(0xFF)
-    red_percentage = np.uint8(0xFF)
+    blue_percentage = np.uint8(0xFF)
     
     # caculate checksum for the data bytes to be sent:
-    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + red_percentage)
+    checksum = np.uint8(manual_state + mode + Kp + Kd_low + Kd_high + blue_percentage)
     
     # send all data bytes:
     serial_port.write(start_byte.tobytes())
@@ -497,7 +488,7 @@ def handle_parameters_event(sent_dict):
     serial_port.write(Kp.tobytes())
     serial_port.write(Kd_low.tobytes())
     serial_port.write(Kd_high.tobytes())
-    serial_port.write(red_percentage.tobytes())
+    serial_port.write(blue_percentage.tobytes())
     
     # send checksum:
     serial_port.write(checksum.tobytes())
