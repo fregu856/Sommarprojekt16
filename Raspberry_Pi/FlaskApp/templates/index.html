@@ -55,6 +55,7 @@
         </br>
         </br>
         
+        <!-- new row: -->
         <div class="row">
             <div class="col-md-4">
                 <div class="chart-wrapper">
@@ -242,8 +243,8 @@
                 </div>
             </div>
         </div>
-        <!-- end of three --> 
         
+        <!-- new row: -->
         <div class="row">
             <div class="col-md-4">
                 <div class="chart-wrapper">
@@ -298,8 +299,8 @@
                 </div>
             </div>
         </div>
-        <!-- end of three -->
         
+        <!-- new row: -->
         <div class="row">  
             <div class="col-md-4">
                 <div class="chart-wrapper">
@@ -352,8 +353,8 @@
                 </div>
             </div>
         </div>
-        <!-- end of three -->
         
+        <!-- new row: -->
         <div class="row">                
             <div class="col-md-4">
                 <div class="chart-wrapper">
@@ -406,7 +407,8 @@
                 </div>
             </div>
         </div>
-            <!-- end of three -->
+
+        <!-- new row: -->
         <div class="row">                
             <div class="col-md-4">
                 <div class="chart-wrapper">
@@ -461,14 +463,13 @@
         </div>
     </div>
     
-    <!-- Script (verkar spela roll i vilken ordning dessa placeras) -->
+    <!-- script (the order DOES seem to matter) -->
     <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/canvasjs.min.js') }}"></script>
-    
-    
-    
+
+    <!-- create all graphs: -->
     <script type="text/javascript" charset="utf-8">
         var previous_data = 0;
         var IR_0_data = 0;
@@ -620,7 +621,7 @@
                 chart_alpha.render();		
             };
 
-            // generates first set of dataPoints
+            // generates first set of dataPoints:
             update_chart_IR_0(); 
             update_chart_IR_1(); 
             update_chart_IR_2();
@@ -632,8 +633,7 @@
             update_chart_p_part();
             update_chart_alpha();
 
-
-            // update chart after specified time. 
+            // update chart after specified time: 
             setInterval(update_chart_IR_0, updateInterval); 
             setInterval(update_chart_IR_1, updateInterval);
             setInterval(update_chart_IR_2, updateInterval); 
@@ -669,7 +669,7 @@
             socket.emit("parameters_event", {Kp: Kp_input, Kd: Kd_input});
         }
         
-        // Keyboard:    
+        // keyboard:    
         function key_press_handler(event) 
         {
             var pressed_key_utf8 = event.keyCode;
@@ -678,7 +678,7 @@
                 case 87:    // W key (up)
                 case 119:   // w key (up)
                 {
-                    if (previous_data !== 1) // Only send data if it is new data (only send once per key press)
+                    if (previous_data !== 1) // only send data if it is new data (only send once per key press)
                     {
                         socket.emit("arrow_event", {data: 1});
                         previous_data = 1;
@@ -799,7 +799,7 @@
         
         socket.on("new_data", data_handler);
         
-        // Buttons: 
+        // buttons: 
         document.getElementById("up_button").addEventListener("mousedown", function () { arrow_handler(1) })   
         document.getElementById("up_button").addEventListener("mouseup", function () { arrow_handler(0) });
         
@@ -819,7 +819,7 @@
         
         document.getElementById("parameters_button").addEventListener("mousedown", parameters_button_press_handler);
         
-        // Keyboard:
+        // keyboard:
         document.onkeypress = key_press_handler;
         document.onkeyup = key_up_handler;     
     </script>
