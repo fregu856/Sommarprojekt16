@@ -3,6 +3,9 @@
 Video:
 https://youtu.be/povGte7K8o4
 
+Pictures from the build:
+https://goo.gl/photos/z78dbTpEZ5kwjqneA
+
 Things/links that I have used or found useful (in no particular order):
 
 Flask (back-end python):
