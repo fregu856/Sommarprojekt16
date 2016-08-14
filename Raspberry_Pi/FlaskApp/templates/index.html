@@ -85,7 +85,7 @@
                             
                             <p>Current Kp: <span id="Kp"></span> </p>
                             <p>Current Kd: <span id="Kd"></span> </p> 
-                            <p>Red percentage: <span id="red_percentage"></span> </p>  
+                            <p>Blue percentage: <span id="blue_percentage"></span> </p>  
                         </div>
                     </div>
                     
@@ -781,7 +781,7 @@
             document.getElementById("Kp").innerHTML = sent_dict["Kp"];
             document.getElementById("Kd").innerHTML = sent_dict["Kd"];
             
-            document.getElementById("red_percentage").innerHTML = sent_dict["red_percentage"];
+            document.getElementById("blue_percentage").innerHTML = sent_dict["blue_percentage"];
             
             stored_state = document.getElementById("state_table_1").innerHTML;
             new_state = sent_dict["AUTO_STATE"];
