@@ -1,9 +1,10 @@
-// Include all structs: (this is needed because the arduino IDE automatically generate function 
+// include all structs: (this is needed because the arduino IDE automatically generate function 
 // declarations and places them just after the pre-processor statements (after the includes),
 // without this any code where any type of struct is used as an argument to some function would not 
 // compile, since the structs has yet to be defined)  
 #include "structs.h"
 
+// pin numbers for the two motor controllers:
 const int EN_R = 10;
 const int EN_L = 3;
 const int IN1_R = 7;
@@ -11,21 +12,17 @@ const int IN2_R = 8;
 const int IN1_L = 4;
 const int IN2_L = 2;
 
+// definitions/mappings to ints:
 const int stop_int = 0;
 const int forward_int = 1;
 const int backward_int = 2;
 const int right_int = 3;
 const int left_int = 4;
-
 const int manual_int = 5;
 const int auto_int = 6;
 
-const int Kp_and_Kd_int = 7;
-const int Kp_int = 8;
-const int Kd_int = 9;
-
-const double IR_sensor_distance_right = 12.5;		// Distance between the two IR-sensors on the right side [cm]
-const float IR_sensor_distance_left = 12.5;		// Distance between the two IR-sensors on the left side [cm]
+const double IR_sensor_distance_right = 12.5; // distance between the two IR-sensors on the right side [cm]
+const float IR_sensor_distance_left = 12.5; // distance between the two IR-sensors on the left side [cm]
 
 float IR_Yaw_right, IR_Yaw_left, Yaw, Yaw_rad;
 float p_part;
@@ -34,7 +31,7 @@ float alpha;
 uint8_t Kp = 4;
 uint16_t Kd = 250;
 
-uint8_t red_percentage = 0;
+uint8_t blue_percentage = 0; // the percentage of pixels in the current camera frame that are blue (or at least 'blue' enough)
 
 uint8_t manual_state = stop_int;
 uint8_t mode = manual_int;
@@ -42,33 +39,27 @@ STATE AUTO_STATE = CORRIDOR; // current auto state is "CORRIDOR" per default
 
 int next_direction = -1;
 
+int blue_counter = 0;
+int blue_sum = 0;
+float blue_average;
 
-//////
-
-int red_counter = 0;
-int red_sum = 0;
-float red_average;
-
-//////
-
-
-#define CORRIDOR_SIDE_DISTANCE 35 // Distance for determining whether in corridor or not
-#define DEAD_END_DISTANCE 12 // Distance to the front wall when it's time to turn around in a dead end
+#define CORRIDOR_SIDE_DISTANCE 35 // distance for determining whether in corridor or not
+#define DEAD_END_DISTANCE 12 // distance to the front wall when it's time to turn around in a dead end
 
 int cycle_count; // counter that keeps track of the number of cycles (loops) in a specific state
-int startup_counter; // counter for giving the sensor values some time to get to normal after start of auto mode
+
 // IR0: IR sensor Front
 // IR1: IR sensor Right-Front 
 // IR2: IR sensor Right-Back
 // IR3: IR sensor Left-Back
 // IR4: IR sensor Left-Front
 
-int IR_latest_reading[5]; // The most recent reading, for each of the 5 IR sensors (array of 5 elements)
-int IR_reading[5][10]; // 2D-array with the 10 latest readings, for each the 5 IR-sensors (a int array of int arrays)
-float IR_median[5]; // Median value of the 10 latest readings, for each of the 5 IR sensors
-float IR_distance[5]; // Current distance for each of the 5 IR sensors (after filtering and conversion)  
+int IR_latest_reading[5]; // the most recent reading, for each of the 5 IR sensors (array of 5 ints)
+int IR_reading[5][10]; // 2D-array with the 10 latest readings, for each of the 5 IR-sensors (an int array of int arrays)
+float IR_median[5]; // median value of the 10 latest readings, for each of the 5 IR sensors
+float IR_distance[5]; // current distance for each of the 5 IR sensors (after filtering and conversion)  
 
-// Look up table (ADC value from analogRead -> distance) for IR sensor 0 (front sensor)
+// look up table (ADC value from analogRead -> distance) for IR sensor 0 (front sensor)
 // (an array of ADC_distance_pairs)
 ADC_distance_pair IR0_table[] =
 {
@@ -88,7 +79,8 @@ ADC_distance_pair IR0_table[] =
   {475, 10},
   {665, 6}
 };
-// Look up table (ADC value from analogRead -> distance) for IR sensor 1 (right front sensor)
+
+// look up table (ADC value from analogRead -> distance) for IR sensor 1 (right front sensor)
 // (an array of ADC_distance_pairs)
 ADC_distance_pair IR1_table[] =
 {
@@ -106,7 +98,8 @@ ADC_distance_pair IR1_table[] =
   {475, 10},
   {665, 6}
 };
-// Look up table (ADC value from analogRead -> distance) for IR sensor 2 (right back sensor)
+
+// look up table (ADC value from analogRead -> distance) for IR sensor 2 (right back sensor)
 // (an array of ADC_distance_pairs)
 ADC_distance_pair IR2_table[] =
 {
@@ -126,7 +119,8 @@ ADC_distance_pair IR2_table[] =
   {455, 10},
   {669, 6}
 };
-// Look up table (ADC value from analogRead -> distance) for IR sensor 3 (left back sensor)
+
+// look up table (ADC value from analogRead -> distance) for IR sensor 3 (left back sensor)
 // (an array of ADC_distance_pairs)
 ADC_distance_pair IR3_table[] =
 {
@@ -143,7 +137,8 @@ ADC_distance_pair IR3_table[] =
   {476, 10},
   {669, 6}
 };
-// Look up table (ADC value from analogRead -> distance) for IR sensor 4 (left front sensor)
+
+// look up table (ADC value from analogRead -> distance) for IR sensor 4 (left front sensor)
 // (an array of ADC_distance_pairs)
 ADC_distance_pair IR4_table[] =
 {
@@ -164,8 +159,8 @@ ADC_distance_pair IR4_table[] =
   {670, 6}
 };
 
-// Top speed: analogWrite(*some pin*, 255)
-// No speed: analogWrite(*some pin*, 0)
+// top speed: analogWrite(*some pin*, 255)
+// no speed: analogWrite(*some pin*, 0)
 
 void move_forward()
 {
@@ -232,6 +227,7 @@ void stop()
   digitalWrite(IN2_L, LOW);
 }
 
+// when in manuel mode, move the robot in the direction specified by "manual_state":
 void run_manual_state()
 {
   switch (manual_state)
@@ -264,10 +260,17 @@ void run_manual_state()
    {
      move_left();
      break;
-   }   
+   }
+
+    default:
+    {
+        stop();
+        break;
+    }
  }
 }
 
+// read all serial data sent from the RPI:
 void read_serial()
 {
     // (the RPI always send the same number of bytes once it sends something, eventhough there's never more than three data bytes that actually should be read. We do this in order to get a fix protocol, which just makes life easier IMO)
@@ -286,14 +289,14 @@ void read_serial()
             uint8_t Kp_byte = Serial.read();
             uint8_t Kd_low_byte = Serial.read();
             uint8_t Kd_high_byte = Serial.read();
-            uint8_t red_percentage_byte= Serial.read();
+            uint8_t blue_percentage_byte= Serial.read();
             
             // read the received checksum:
             uint8_t checksum = Serial.read();
             
             // calculate checksum for the received data bytes:
             uint8_t calc_checksum = manual_state_byte + mode_byte + Kp_byte + 
-                Kd_low_byte + Kd_high_byte + red_percentage_byte;
+                Kd_low_byte + Kd_high_byte + blue_percentage_byte;
                 
             // update the variables with the read serial data only if the checksums match:
             if (calc_checksum == checksum)
@@ -311,7 +314,7 @@ void read_serial()
                     if ((mode_byte == auto_int) && (mode == manual_int)) // if mode is changed from manual to auto:
                     {
                         mode = mode_byte;
-                        AUTO_STATE = CORRIDOR;
+                        AUTO_STATE = CORRIDOR; // always start in CORRIDOR when we switch to auto mode
                     }
                     
                     else
@@ -337,14 +340,14 @@ void read_serial()
                     }
                 }   
 
-                if (red_percentage_byte != 0xFF) // 0xFF (255) is sent if it's not supposed to be read
+                if (blue_percentage_byte != 0xFF) // 0xFF (255) is sent if it's not supposed to be read
                 {
-                    red_percentage = red_percentage_byte;
+                    blue_percentage = blue_percentage_byte;
                 }
                 
             }
             
-            else // if the checksums doesn't match: something weird has happend during transmission: flush input bufer and stat over
+            else // if the checksums doesn't match: something weird has happend during transmission: flush input buffer and start over
             {
                 while (Serial.available())
                 {
@@ -360,27 +363,29 @@ void read_serial()
     }
 }
 
+// read the raw ADC values for all 5 IR sensor:
 void read_IR_sensors()
 {
-    // Read analog pin 0 - 4 (A0 - A4) (analogRead returns result of 10-bit ADC, an int between 0 and 1023)
+    // read analog pin 0 - 4 (A0 - A4) (analogRead returns result of 10-bit ADC, an int between 0 and 1023)
     for (int sensor_ID = 0; sensor_ID <= 4; ++sensor_ID)
     {
         IR_latest_reading[sensor_ID] = analogRead(sensor_ID);
     }
 }
 
+// get the median value of the values in "array" (which is an array containing "no_of_elements" ints)
 float get_median(int array[], int no_of_elements)
 {
     float median;
     
-    // Sort array using Bubble sort:
-    for (int i = 0; i < no_of_elements - 1; ++i) // for no_of_elements - 1 times: (no of needed cycles in the worst case)
+    // sort array using Bubble sort:
+    for (int i = 0; i < no_of_elements - 1; ++i) // for no_of_elements - 1 times: (number of needed cycles in the worst case)
     {
         for (int k = 0; k < no_of_elements - (i + 1); ++k)
         {
             if (array[k] > array[k + 1])
             {
-                // Swap positions:
+                // swap positions:
                 int temp_container = array[k];
                 array[k] = array[k + 1];
                 array[k + 1] = temp_container;
@@ -388,12 +393,13 @@ float get_median(int array[], int no_of_elements)
         }
     }
     
-    // Get median value (two different cases depending on whether even no of elements or not)
+    // get median value (two different cases depending on whether even number of elements or not)
     if (no_of_elements % 2 != 0) // if ODD no of elements: (if the remainder when dividing with 2 is non-zero)
     {
         int median_index = no_of_elements/2 - (no_of_elements/2 % 2); // median_index = floor(no_of_elements/2)
         median = array[median_index];
     }
+    
     else // if EVEN no of elements: (if there is no remainder when dividing with 2)
     {
         int median_index = no_of_elements/2;
@@ -403,22 +409,23 @@ float get_median(int array[], int no_of_elements)
     return median;
 }
 
+// get the median of the 10 latest read ADC values, for all 5 IR sensors: (digital low pass filter)
 void filter_IR_values()
 {
     for (int sensor_ID = 0; sensor_ID <= 4; ++sensor_ID) // for IR0 to IR4:
     {
-        // Shift out the oldest reading:
+        // shift out the oldest reading:
         for (int reading_index = 9; reading_index >= 1; --reading_index)
         {
             IR_reading[sensor_ID][reading_index] = IR_reading[sensor_ID][reading_index - 1];
         }
         
-        // Insert the latest reading:
+        // insert the latest reading:
         IR_reading[sensor_ID][0] = IR_latest_reading[sensor_ID];
         
-        // Get the median value of the 10 latest readings: (filter sensor readings)
-        int size = sizeof(IR_reading[sensor_ID])/sizeof(int); // We get the number of elements (ints) in the array by dividing the size of the array (in no of bytes) with the size of one int (in no of bytes)
-        int array_copy[] = {IR_reading[sensor_ID][0], IR_reading[sensor_ID][1], // Need to make a copy here, "get_median" apparently does something weird with its passed array 
+        // get the median value of the 10 latest readings: (filter sensor readings)
+        int size = sizeof(IR_reading[sensor_ID])/sizeof(int); // we get the number of elements (ints) in the array by dividing the size of the array (in number of bytes) with the size of one int (in number of bytes)
+        int array_copy[] = {IR_reading[sensor_ID][0], IR_reading[sensor_ID][1], // need to make a copy here, "get_median" apparently does something weird with its passed array 
                             IR_reading[sensor_ID][2], IR_reading[sensor_ID][3], 
                             IR_reading[sensor_ID][4], IR_reading[sensor_ID][5], 
                             IR_reading[sensor_ID][6], IR_reading[sensor_ID][7], 
@@ -427,24 +434,25 @@ void filter_IR_values()
     }
 }
 
+// convert the raw ADC value "ADC_value" to its corresponding distance with the help of the lookup table "ADC_dist_table" and linear interpolation:
 float lookup_distance(ADC_distance_pair ADC_dist_table[], float ADC_value, int table_size)
 {
-    // Return minimum value if "ADC_value" is smaller than the smallest table value:
+    // return minimum value if "ADC_value" is smaller than the smallest table value:
 	if(ADC_value <= ADC_dist_table[0].ADC_value)	
     {
         return ADC_dist_table[0].distance;
     }
 
-    // Return maximum value if "ADC_value" is greater than the biggest table value:
+    // return maximum value if "ADC_value" is greater than the biggest table value:
 	if(ADC_value >= ADC_dist_table[table_size-1].ADC_value)
 	{
         return ADC_dist_table[table_size-1].distance;
     }
 
-    // Linear interpolation:
+    // linear interpolation:
 	for(int i = 0; i < table_size-1; i++)
 	{
-        // Interpolate (linearly) if "ADC_value" is between two table values:
+        // interpolate (linearly) if "ADC_value" is between two table values:
 		if (ADC_dist_table[i].ADC_value <= ADC_value && ADC_value <= ADC_dist_table[i+1].ADC_value) // Linjärinterpolera om ADC-värdet ligger mellan två tabell-värden
 		{
 			float diff_ADC = ADC_value - ADC_dist_table[i].ADC_value;
@@ -458,6 +466,7 @@ float lookup_distance(ADC_distance_pair ADC_dist_table[], float ADC_value, int t
 	return -1;
 }
 
+// convert the median ADC value to its corresponding distance, for all 5 IR sensors:
 void convert_IR_values()
 {
     IR_distance[0] = lookup_distance(IR0_table, IR_median[0], 15);
@@ -467,6 +476,7 @@ void convert_IR_values()
   	IR_distance[4] = lookup_distance(IR4_table, IR_median[4], 15);
 }
 
+// use the "alpha_value" from the PD controller to move the robot forward (in auto mode) while keeping it centered in the corridor:
 void move_forward_with_control(float speed, float alpha_value)
 {
   // right side forward:
@@ -477,8 +487,11 @@ void move_forward_with_control(float speed, float alpha_value)
   digitalWrite(IN1_L, HIGH);
   digitalWrite(IN2_L, LOW);
 
-  float right_speed = speed - alpha_value;
+  // adjust the motor speeds to steer the robot toward the center of the corridor: (once the robot is centered and aligned, "alpha_value" will equal 0 and the robot will just move straight forward)
+  float right_speed = speed - alpha_value; 
   float left_speed = speed + alpha_value;
+  
+  // limit the motor speeds:
   if (right_speed > 250)
   {
     right_speed = 250;
@@ -496,46 +509,51 @@ void move_forward_with_control(float speed, float alpha_value)
     left_speed = 0;
   }
   
-  analogWrite(EN_R, right_speed); // motor speed right
-  analogWrite(EN_L, left_speed); // motor speed left 
-  //Serial.println(alpha_value);
+  analogWrite(EN_R, right_speed); // set motor speed right
+   analogWrite(EN_L, left_speed); // set motor speed left
 }
 
+// calculate the angle of the robot to the corridor walls: (this is used in the "D" part of the PD controller)
 void calculate_Yaw()
 {
 	float l_delta_right = IR_distance[1] - IR_distance[2];
 	float l_delta_left = IR_distance[3] - IR_distance[4];
 
-    // Calculate the angle relative the corridor walls, based on the right side IR sensors:
+    // calculate the angle relative the corridor walls using trigonometry, based on the right side IR sensors:
     IR_Yaw_right = (atan(l_delta_right/IR_sensor_distance_right)/3.1415926)*180;	
-    // Calculate the angle relative the corridor walls, based on the left side IR sensors:
+    // calculate the angle relative the corridor walls using trigonometry, based on the left side IR sensors:
     IR_Yaw_left = (atan(l_delta_left/IR_sensor_distance_left)/3.1415926)*180;
     
-    // Take "Yaw" to be the mean:
+    // take "Yaw" to be the mean:
     Yaw = (IR_Yaw_right + IR_Yaw_left)/2;
-    // Convert to radians (to use in control algorithms, in degrees for display to user):
+    // convert to radians (to use in the control algorithm, in degrees for display to user):
     Yaw_rad = (Yaw/180)*3.1415926;
 }
 
+// calculate the offset of the robot from the center of the corridor: (this is used in the "P" part if the PD controller) 
 void calculate_p_part()
 {
     p_part = IR_distance[2] - IR_distance[4];
 }
 
+// calculate the "steering angle" from the PD controller: (when the robot is centered and aligned with the corridor, alpha will equal 0 and the robot will just move straight ahead, otherwise the robot will steer toward the center of the corridor and align itself with the corridor walls)
 void calculate_alpha()
 {
-    if ((IR_Yaw_right - IR_Yaw_left > 15) || (IR_Yaw_right - IR_Yaw_left < -15)) // if they differ to much we're probably just on our way out of a juction and should not do any adjustments
+    if ((IR_Yaw_right - IR_Yaw_left > 15) || (IR_Yaw_right - IR_Yaw_left < -15)) // if they differ too much we're probably just on our way out of a juction and should not do any adjustments
     {
         alpha = 0;
     }
+    
     else
     {
         alpha = Kp*p_part + Kd*Yaw_rad;
     }
 }
 
+// when in auto mode, update the AUTO_STATE based on the current sensor values and previous states:
 void update_state()
 {
+    // get the current sensor values:
     float IR_0 = IR_distance[0];
     float IR_1 = IR_distance[1];
     float IR_2 = IR_distance[2];
@@ -544,10 +562,23 @@ void update_state()
     
     switch (AUTO_STATE)
 	{
+        // when in a dead end, turn until the road ahead is open again:
         case DEAD_END:
         {
-            if ((IR_0 > 60) && (IR_1 < CORRIDOR_SIDE_DISTANCE-10) && (IR_2 < CORRIDOR_SIDE_DISTANCE-10)
+            if ((IR_0 > 35) && (IR_1 < CORRIDOR_SIDE_DISTANCE-10) && (IR_2 < CORRIDOR_SIDE_DISTANCE-10)
             && (IR_3 < CORRIDOR_SIDE_DISTANCE-10) && (IR_4 < CORRIDOR_SIDE_DISTANCE-10))
+            {
+                AUTO_STATE = OUT_OF_DEAD_END;
+                cycle_count = 0;
+            }
+            
+            break;
+        }
+        
+        // when the road ahead is open again after a dead end, stop shortly to give the sensor values some time to get back to normal, then go back to CORRIDOR:
+        case OUT_OF_DEAD_END:
+        {
+            if (cycle_count > 10)
             {
                 AUTO_STATE = CORRIDOR;
                 cycle_count = 0;
@@ -556,17 +587,18 @@ void update_state()
             break;
         }
         
+        // when in a corridor, look for dead ends (walls in front) or side openings:
 		case CORRIDOR:
 		{
 			if ((IR_0 < DEAD_END_DISTANCE) && (IR_1 < CORRIDOR_SIDE_DISTANCE)
             && (IR_2 < CORRIDOR_SIDE_DISTANCE) && (IR_3 < CORRIDOR_SIDE_DISTANCE)
             && (IR_4 < CORRIDOR_SIDE_DISTANCE))
             {
-                AUTO_STATE = DETERMINE_IF_TARGET;
+                AUTO_STATE = DEAD_END;
                 cycle_count = 0;
             }
             
-            if ((IR_1 > CORRIDOR_SIDE_DISTANCE) || (IR_2 > CORRIDOR_SIDE_DISTANCE) 
+            else if ((IR_1 > CORRIDOR_SIDE_DISTANCE) || (IR_2 > CORRIDOR_SIDE_DISTANCE) 
             || (IR_3 > CORRIDOR_SIDE_DISTANCE - 10) || (IR_4 > CORRIDOR_SIDE_DISTANCE))
             {
                 AUTO_STATE = DETERMINE_IF_SIGN;
@@ -576,17 +608,32 @@ void update_state()
 			break;
 		}
         
-		case DETERMINE_IF_TARGET:
-		{
-			if (cycle_count > 20)
+        // when we have discovered a side opening, the robot is just about to get into a junction, and it's at a good distance to look at the camera frames and check if there is a blue sign (meaning that the robot should turn right) on the junction wall: (stop for a while, look at a number of frames and then check if (on average) there is a lot of blue in them)
+        case DETERMINE_IF_SIGN:
+        {
+            if (cycle_count > 15)
             {
-                AUTO_STATE = DEAD_END;
+                AUTO_STATE = OUT_OF_CORRIDOR;
                 cycle_count = 0;
+                blue_average = blue_sum/blue_counter;
+                blue_sum = 0;
+                blue_counter = 0;
+                
+                if (blue_average > 10)
+                {
+                    next_direction = right_int;
+                }
+                
+                else
+                {
+                    next_direction = left_int;
+                }
             }
             
-			break;
-		}
+            break;
+        } 
         
+        // move forward until the entire side of the robot is out of the corridor:
         case OUT_OF_CORRIDOR:
         {
             if (((IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
@@ -602,20 +649,23 @@ void update_state()
             
             break;
         }
-			
+        
+        // move forward for a fix number of cycles, in order to position the robot in the center of the junction: 
         case INTO_JUNCTION:
         {
-            if (cycle_count > 6)
+            if (cycle_count > 5)
             {
                 AUTO_STATE = DETERMINE_JUNCTION;
                 cycle_count = 0;
             }
+            
             break;
         }
         
+        // when the robot is right in the junction, stop for a while (to give the sensor values some time to become steady), look at the sensor values and determine which type of junction the robot currently is in:
         case DETERMINE_JUNCTION:
         {            
-            if ((cycle_count > 20) && (IR_0 < CORRIDOR_SIDE_DISTANCE)
+            if ((cycle_count > 15) && (IR_0 < CORRIDOR_SIDE_DISTANCE)
             && (IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
             && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))
             {
@@ -623,7 +673,7 @@ void update_state()
                 cycle_count = 0;
             }
             
-            else if ((cycle_count > 20) && (IR_0 < CORRIDOR_SIDE_DISTANCE-10)
+            else if ((cycle_count > 15) && (IR_0 < CORRIDOR_SIDE_DISTANCE-10)
             && (IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
             && (IR_3 > CORRIDOR_SIDE_DISTANCE-10) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
             {
@@ -631,7 +681,7 @@ void update_state()
                 cycle_count = 0;
             }
             
-            else if ((cycle_count > 20) && (IR_0 > CORRIDOR_SIDE_DISTANCE)
+            else if ((cycle_count > 15) && (IR_0 > CORRIDOR_SIDE_DISTANCE)
             && (IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
             && (IR_3 > CORRIDOR_SIDE_DISTANCE-10) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
             {
@@ -639,7 +689,7 @@ void update_state()
                 cycle_count = 0;
             }
 
-            else if ((cycle_count > 20) && (IR_0 > CORRIDOR_SIDE_DISTANCE)
+            else if ((cycle_count > 15) && (IR_0 > CORRIDOR_SIDE_DISTANCE)
             && (IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
             && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))
             {
@@ -647,11 +697,11 @@ void update_state()
                 cycle_count = 0;
             }
             
-            else if ((cycle_count > 20) && (IR_0 < CORRIDOR_SIDE_DISTANCE)
-            && (IR_1 > CORRIDOR_SIDE_DISTANCE) && (IR_2 > CORRIDOR_SIDE_DISTANCE) 
-            && (IR_3 > CORRIDOR_SIDE_DISTANCE-10) && (IR_4 > CORRIDOR_SIDE_DISTANCE))
+            else if ((cycle_count > 15) && (IR_0 < CORRIDOR_SIDE_DISTANCE)
+            && ((IR_1 > CORRIDOR_SIDE_DISTANCE) || (IR_2 > CORRIDOR_SIDE_DISTANCE)) 
+            && ((IR_3 > CORRIDOR_SIDE_DISTANCE-10) || (IR_4 > CORRIDOR_SIDE_DISTANCE)))
             {   
-                if (next_direction == right_int)
+                if (next_direction == right_int) // if the robot is in a C junction and there was a lot of blue on the junction wall (there was a blue sign), it should go to the right:
                 {
                     AUTO_STATE = JUNCTION_C_GO_RIGHT;
                     cycle_count = 0;
@@ -663,39 +713,24 @@ void update_state()
                     cycle_count = 0;
                 }
 
-                else
+                else // (this should never even happen)
                 {
                     break;
                 }
             }
             
-            break;
-        }
-        
-        case DETERMINE_IF_SIGN:
-        {
-            if (cycle_count > 30)
-            {
-                AUTO_STATE = OUT_OF_CORRIDOR;
-                cycle_count = 0;
-                red_average = red_sum/red_counter;
-                red_sum = 0;
-                red_counter = 0;
-                
-                if (red_average > 10)
-                {
-                    next_direction = right_int;
-                }
-                
-                else
-                {
-                    next_direction = left_int;
-                }
+            else if ((cycle_count > 15) && (IR_0 > CORRIDOR_SIDE_DISTANCE)
+            && ((IR_1 > CORRIDOR_SIDE_DISTANCE) || (IR_2 > CORRIDOR_SIDE_DISTANCE)) 
+            && ((IR_3 > CORRIDOR_SIDE_DISTANCE-10) || (IR_4 > CORRIDOR_SIDE_DISTANCE)))
+            {   
+                AUTO_STATE = END_OF_COURSE;
+                cycle_count = 0;       
             }
             
             break;
-        } 
+        }
         
+        // turn until there is an opening straight ahead and to the right:
         case JUNCTION_A_R:
         {
             if ((IR_0 > 35) && ((IR_1> 30) || (IR_2 > 30)))
@@ -707,6 +742,7 @@ void update_state()
             break;
         }
         
+        // turn until there is an opening straight ahead and to the left:
         case JUNCTION_A_L:
         {
             if ((IR_0 > 30) && ((IR_3 > 30) || (IR_4 > 30)))
@@ -718,6 +754,7 @@ void update_state()
             break;
         }
         
+        // move forward until the robot is in the corridor again:
         case JUNCTION_B_R:
         {
             if ((IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
@@ -726,9 +763,11 @@ void update_state()
                 AUTO_STATE = CORRIDOR;
                 cycle_count = 0;
             }
+            
             break;
         }
         
+        // turn until all sides are open:
         case JUNCTION_B_L:
         {
             if ((IR_0 > 30) && ((IR_1 > 30) || (IR_2 > 30)) && ((IR_3 > 30) || (IR_4 > 30)))
@@ -740,6 +779,7 @@ void update_state()
             break;
         }
         
+        // turn until there is an opening straight ahead and there is a wall to the right:
         case JUNCTION_C_GO_LEFT:
         {
             if ((IR_0 > 30) && (IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE))
@@ -751,6 +791,7 @@ void update_state()
             break;
         }
         
+        // turn until there is an opening straight ahead and there is a wall to the left:
         case JUNCTION_C_GO_RIGHT:
         {
             if ((IR_0 > 30) && (IR_3 < CORRIDOR_SIDE_DISTANCE) && (IR_4 < CORRIDOR_SIDE_DISTANCE))
@@ -762,6 +803,7 @@ void update_state()
             break;
         }
         
+        // move forward until the robot is back in the corridor:
         case OUT_OF_JUNCTION:
         {
             if ((IR_1 < CORRIDOR_SIDE_DISTANCE) && (IR_2 < CORRIDOR_SIDE_DISTANCE) 
@@ -773,6 +815,12 @@ void update_state()
             break;
         }
 		
+        // do nothing if the robot has reached the end of the course:
+        case END_OF_COURSE:
+        {
+            break;
+        }
+        
 		default:
         {
             break;
@@ -780,6 +828,7 @@ void update_state()
 	}   
 }
 
+// execute the current AUTO_STATE:
 void run_state()
 {
     switch (AUTO_STATE)
@@ -787,6 +836,14 @@ void run_state()
         case DEAD_END:
         {
             move_right();
+            ++cycle_count;
+
+            break;
+        }
+        
+        case OUT_OF_DEAD_END:
+        {
+            stop();
             ++cycle_count;
 
             break;
@@ -814,13 +871,6 @@ void run_state()
         }
         
         case DETERMINE_JUNCTION:
-        { 
-            stop();
-            ++cycle_count;
-            break;
-        }
-        
-        case DETERMINE_IF_TARGET:
         { 
             stop();
             ++cycle_count;
@@ -869,13 +919,6 @@ void run_state()
             break;
         }
         
-        case JUNCTION_D:
-        {
-            move_left();
-            ++cycle_count;
-            break;
-        }
-        
         case OUT_OF_JUNCTION:
         {
             move_forward_with_control(100, 0);
@@ -887,11 +930,17 @@ void run_state()
         {
             stop();
             ++cycle_count;
-            ++red_counter;
-            red_sum = red_sum + red_percentage;
+            ++blue_counter;
+            blue_sum = blue_sum + blue_percentage;
             break;
         }
 		
+        case END_OF_COURSE:
+        {
+            stop();
+            break;
+        }
+        
 		default:
         {
             stop();
@@ -900,6 +949,7 @@ void run_state()
 	}
 }
 
+// restrict "value" to fit in an uint8_t:
 float restrict_to_unsigned_size(float value)
 {
     if (value > 255)
@@ -913,6 +963,7 @@ float restrict_to_unsigned_size(float value)
     }
 }
 
+// restrict "value" to fit in an int8_t:
 float restrict_to_signed_size(float value)
 {
     if (value > 127)
@@ -931,6 +982,7 @@ float restrict_to_signed_size(float value)
     }
 }
 
+// send all data to the RPI over serial:
 void send_serial()
 {  
     // restrict data to be sent and convert to one byte: (restrict to 0 - 255 or -128 - 127)
@@ -954,7 +1006,7 @@ void send_serial()
     // calculate checksum for the data bytes to be sent: (this will obviously overflow the uint8_t sometimes, but that's not a problem since we will do the exact same calculation on the receiving end (on the RPI) and then compare the two)
     uint8_t checksum = IR_0_byte + IR_1_byte + IR_2_byte + IR_3_byte + IR_4_byte + IR_Yaw_right_byte + 
         IR_Yaw_left_byte + Yaw_byte + p_part_byte + alpha_low_byte + alpha_high_byte + Kp_byte + 
-        Kd_low_byte + Kd_high_byte + AUTO_STATE + manual_state + mode + red_percentage;
+        Kd_low_byte + Kd_high_byte + AUTO_STATE + manual_state + mode + blue_percentage;
     
     // indicate start of transmission:
     Serial.write(100);
@@ -977,7 +1029,7 @@ void send_serial()
     Serial.write(AUTO_STATE);
     Serial.write(manual_state);
     Serial.write(mode);
-    Serial.write(red_percentage);
+    Serial.write(blue_percentage);
     
     // send checksum:
     Serial.write(checksum);
@@ -998,19 +1050,16 @@ void setup()
 void loop()
 {  
     read_serial();
+    
     read_IR_sensors();
     filter_IR_values();
     convert_IR_values();
+    
     calculate_Yaw();
     calculate_p_part();
     calculate_alpha();
     
-    if (startup_counter < 40) // wait approx 2 secs
-    {
-        ++startup_counter;
-    }
-    
-    else if (mode == manual_int)
+    if (mode == manual_int)
     {
         run_manual_state();
     }
